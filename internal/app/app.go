@@ -24,10 +24,8 @@ func (app App) HandleHTTPRequests(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
 		app.handlePost(w, r)
-		break
 	case http.MethodGet:
 		app.handleGet(w, r)
-		break
 	default:
 		http.NotFound(w, r)
 	}
@@ -47,10 +45,10 @@ func (app App) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortUrl := app.shortener.MakeShorter(body)
+	shortURL := app.shortener.MakeShorter(body)
 
 	w.WriteHeader(http.StatusTemporaryRedirect)
-	_, err = w.Write(([]byte)(shortUrl))
+	_, err = w.Write(([]byte)(shortURL))
 	if err != nil {
 		http.Error(w, "cannot write response", http.StatusBadRequest)
 	}
@@ -64,12 +62,12 @@ func (app App) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := path[len(path)-1]
-	initialUrl, err := app.shortener.RestoreLong(id)
+	initialURL, err := app.shortener.RestoreLong(id)
 	if err != nil {
 		http.Error(w, "initial version of the link is not found", http.StatusBadRequest)
 	}
 
-	w.Header().Set("Location", initialUrl)
+	w.Header().Set("Location", initialURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 
 	_, err = w.Write([]byte{})
