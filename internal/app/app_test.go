@@ -88,6 +88,8 @@ func TestApp_handlePost(t *testing.T) {
 			switch w := tt.args.w.(type) {
 			case *httptest.ResponseRecorder:
 				result := w.Result()
+				err := result.Body.Close()
+				assert.NoError(t, err, "closing body error")
 
 				assert.Equal(t, tt.want.statusCode, result.StatusCode)
 				assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
@@ -153,6 +155,8 @@ func TestApp_handleGet(t *testing.T) {
 			switch w := tt.args.w.(type) {
 			case *httptest.ResponseRecorder:
 				result := w.Result()
+				err := result.Body.Close()
+				assert.NoError(t, err, "closing body error")
 
 				assert.Equal(t, tt.want.statusCode, result.StatusCode)
 				assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
