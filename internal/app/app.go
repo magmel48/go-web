@@ -47,7 +47,7 @@ func (app App) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	shortURL := app.shortener.MakeShorter(body)
 
-	w.WriteHeader(http.StatusTemporaryRedirect)
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(([]byte)(shortURL))
 	if err != nil {
 		http.Error(w, "cannot write response", http.StatusBadRequest)
