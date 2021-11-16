@@ -32,6 +32,11 @@ func (app App) HandleHTTPRequests(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app App) handlePost(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		http.Error(w, "empty request body", http.StatusBadRequest)
+		return
+	}
+
 	rawBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "cannot read request body", http.StatusBadRequest)
@@ -39,7 +44,7 @@ func (app App) handlePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body := (string)(rawBody)
-	_, err = url.Parse(body)
+	_, err = url.ParseRequestURI(body)
 	if err != nil {
 		http.Error(w, "cannot parse url", http.StatusBadRequest)
 		return
@@ -47,6 +52,7 @@ func (app App) handlePost(w http.ResponseWriter, r *http.Request) {
 
 	shortURL := app.shortener.MakeShorter(body)
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(([]byte)(shortURL))
 	if err != nil {
