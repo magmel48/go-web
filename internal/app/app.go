@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/magmel48/go-web/internal/shortener"
-	"io/ioutil"
+	"github.com/valyala/fasthttp"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,64 +20,51 @@ func NewApp(host string, port string) App {
 }
 
 // HandleHTTPRequests handles http requests.
-func (app App) HandleHTTPRequests(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
+func (app App) HandleHTTPRequests(ctx *fasthttp.RequestCtx) {
+	switch string(ctx.Method()) {
 	case http.MethodPost:
-		app.handlePost(w, r)
+		app.handlePost(ctx)
 	case http.MethodGet:
-		app.handleGet(w, r)
+		app.handleGet(ctx)
 	default:
-		http.NotFound(w, r)
+		ctx.NotFound()
 	}
 }
 
-func (app App) handlePost(w http.ResponseWriter, r *http.Request) {
-	if r.Body == nil {
-		http.Error(w, "empty request body", http.StatusBadRequest)
+func (app App) handlePost(ctx *fasthttp.RequestCtx) {
+	if ctx.PostBody() == nil {
+		ctx.Error("empty request body", fasthttp.StatusBadRequest)
 		return
 	}
 
-	rawBody, err := ioutil.ReadAll(r.Body)
+	body := string(ctx.PostBody())
+	_, err := url.ParseRequestURI(body)
 	if err != nil {
-		http.Error(w, "cannot read request body", http.StatusBadRequest)
-		return
-	}
-
-	body := (string)(rawBody)
-	_, err = url.ParseRequestURI(body)
-	if err != nil {
-		http.Error(w, "cannot parse url", http.StatusBadRequest)
+		ctx.Error( "cannot parse url", fasthttp.StatusBadRequest)
 		return
 	}
 
 	shortURL := app.shortener.MakeShorter(body)
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(([]byte)(shortURL))
-	if err != nil {
-		http.Error(w, "cannot write response", http.StatusBadRequest)
-	}
+	ctx.SetContentType("text/plain; charset=utf-8")
+	ctx.SetStatusCode(fasthttp.StatusCreated)
+	ctx.SetBody([]byte(shortURL))
 }
 
-func (app App) handleGet(w http.ResponseWriter, r *http.Request) {
-	path := strings.Split(r.URL.Path, "/")
+func (app App) handleGet(ctx *fasthttp.RequestCtx) {
+	path := strings.Split(string(ctx.Path()), "/")
 	if len(path) != 2 {
-		http.Error(w, "cannot parse url", http.StatusBadRequest)
+		ctx.Error("cannot parse url", fasthttp.StatusBadRequest)
 		return
 	}
 
 	id := path[len(path)-1]
 	initialURL, err := app.shortener.RestoreLong(id)
 	if err != nil {
-		http.Error(w, "initial version of the link is not found", http.StatusBadRequest)
+		ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
+		return
 	}
 
-	w.Header().Set("Location", initialURL)
-	w.WriteHeader(http.StatusTemporaryRedirect)
-
-	_, err = w.Write([]byte{})
-	if err != nil {
-		http.Error(w, "cannot write response", http.StatusBadRequest)
-	}
+	ctx.Response.Header.Set("Location", initialURL)
+	ctx.SetStatusCode(http.StatusTemporaryRedirect)
 }

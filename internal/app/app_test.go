@@ -1,23 +1,42 @@
 package app
 
 import (
-	"errors"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"strings"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttputil"
+	"net"
 	"testing"
 )
+
+// serve helps to run fasthttp mock server and send a request to created server.
+func serve(handler fasthttp.RequestHandler, req *fasthttp.Request, res *fasthttp.Response) error {
+	ln := fasthttputil.NewInmemoryListener()
+	defer ln.Close()
+
+	go func() {
+		err := fasthttp.Serve(ln, handler)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	client := fasthttp.Client{
+		Dial: func(addr string) (net.Conn, error) {
+			return ln.Dial()
+		},
+	}
+
+	return client.Do(req, res)
+}
 
 func TestApp_handlePost(t *testing.T) {
 	type fields struct {
 		shortener shortener.Shortener
 	}
 	type args struct {
-		w http.ResponseWriter
-		r *http.Request
+		w *fasthttp.Response
+		r *fasthttp.Request
 	}
 	type want struct {
 		contentType  string
@@ -25,11 +44,15 @@ func TestApp_handlePost(t *testing.T) {
 		shortenedURL string
 	}
 
-	noBodyRequest, _ := http.NewRequest(http.MethodPost, "http://localhost:8080", nil)
-	malformedURLInBodyRequest, _ := http.NewRequest(
-		http.MethodPost, "http://localhost:8080", strings.NewReader("test"))
-	okURLInBodyRequest, _ := http.NewRequest(
-		http.MethodPost, "http://localhost:8080", strings.NewReader("https://google.com"))
+	malformedURLInBodyRequest := fasthttp.AcquireRequest()
+	malformedURLInBodyRequest.Header.SetMethod(fasthttp.MethodPost)
+	malformedURLInBodyRequest.SetRequestURI("http://localhost:8080")
+	malformedURLInBodyRequest.SetBody([]byte("test"))
+
+	okURLInBodyRequest := fasthttp.AcquireRequest()
+	okURLInBodyRequest.Header.SetMethod(fasthttp.MethodPost)
+	okURLInBodyRequest.SetRequestURI("http://localhost:8080")
+	okURLInBodyRequest.SetBody([]byte("https://google.com"))
 
 	tests := []struct {
 		name   string
@@ -38,39 +61,27 @@ func TestApp_handlePost(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "no body",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
-			args: args{
-				w: httptest.NewRecorder(),
-				r: noBodyRequest,
-			},
-			want: want{
-				contentType: "text/plain; charset=utf-8",
-				statusCode:  http.StatusBadRequest,
-			},
-		},
-		{
 			name:   "malformed url",
 			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
 			args: args{
-				w: httptest.NewRecorder(),
+				w: fasthttp.AcquireResponse(),
 				r: malformedURLInBodyRequest,
 			},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  http.StatusBadRequest,
+				statusCode:  fasthttp.StatusBadRequest,
 			},
 		},
 		{
 			name:   "happy path",
 			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
 			args: args{
-				w: httptest.NewRecorder(),
+				w: fasthttp.AcquireResponse(),
 				r: okURLInBodyRequest,
 			},
 			want: want{
 				contentType:  "text/plain; charset=utf-8",
-				statusCode:   http.StatusCreated,
+				statusCode:   fasthttp.StatusCreated,
 				shortenedURL: "http://localhost:8080/1",
 			},
 		},
@@ -82,26 +93,14 @@ func TestApp_handlePost(t *testing.T) {
 				shortener: tt.fields.shortener,
 			}
 
-			h := http.HandlerFunc(app.HandleHTTPRequests)
-			h.ServeHTTP(tt.args.w, tt.args.r)
+			err := serve(app.HandleHTTPRequests, tt.args.r, tt.args.w)
+			assert.NoError(t, err, "POST request error")
 
-			switch w := tt.args.w.(type) {
-			case *httptest.ResponseRecorder:
-				result := w.Result()
-				err := result.Body.Close()
-				assert.NoError(t, err, "closing body error")
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
+			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
 
-				assert.Equal(t, tt.want.statusCode, result.StatusCode)
-				assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
-
-				if result.StatusCode == http.StatusCreated {
-					rawBody, err := ioutil.ReadAll(result.Body)
-
-					assert.NoError(t, err, "read body error")
-					assert.Equal(t, tt.want.shortenedURL, (string)(rawBody))
-				}
-			default:
-				assert.Error(t, errors.New("wrong test setup"))
+			if tt.args.w.StatusCode() == fasthttp.StatusCreated {
+				assert.Equal(t, tt.want.shortenedURL, string(tt.args.w.Body()))
 			}
 		})
 	}
@@ -112,8 +111,8 @@ func TestApp_handleGet(t *testing.T) {
 		shortener shortener.Shortener
 	}
 	type args struct {
-		w http.ResponseWriter
-		r *http.Request
+		w *fasthttp.Response
+		r *fasthttp.Request
 	}
 	type want struct {
 		contentType  string
@@ -121,7 +120,9 @@ func TestApp_handleGet(t *testing.T) {
 		shortenedURL string
 	}
 
-	request, _ := http.NewRequest(http.MethodGet, "http://localhost:8080", nil)
+	request := fasthttp.AcquireRequest()
+	request.Header.SetMethod(fasthttp.MethodGet)
+	request.SetRequestURI("http://localhost:8080/1")
 
 	tests := []struct {
 		name   string
@@ -133,12 +134,12 @@ func TestApp_handleGet(t *testing.T) {
 			name:   "no url found for fresh db in shortener",
 			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
 			args: args{
-				w: httptest.NewRecorder(),
+				w: fasthttp.AcquireResponse(),
 				r: request,
 			},
 			want: want{
 				contentType: "text/plain; charset=utf-8",
-				statusCode:  http.StatusBadRequest,
+				statusCode:  fasthttp.StatusBadRequest,
 			},
 		},
 	}
@@ -149,20 +150,11 @@ func TestApp_handleGet(t *testing.T) {
 				shortener: tt.fields.shortener,
 			}
 
-			h := http.HandlerFunc(app.HandleHTTPRequests)
-			h.ServeHTTP(tt.args.w, tt.args.r)
+			err := serve(app.HandleHTTPRequests, tt.args.r, tt.args.w)
+			assert.NoError(t, err, "GET request error")
 
-			switch w := tt.args.w.(type) {
-			case *httptest.ResponseRecorder:
-				result := w.Result()
-				err := result.Body.Close()
-				assert.NoError(t, err, "closing body error")
-
-				assert.Equal(t, tt.want.statusCode, result.StatusCode)
-				assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
-			default:
-				assert.Error(t, errors.New("wrong test setup"))
-			}
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
+			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
 		})
 	}
 }

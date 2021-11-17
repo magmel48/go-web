@@ -18,10 +18,10 @@ func TestShortener_MakeShorter(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "happy path",
+			name:   "happy path",
 			fields: fields{prefix: "http://localhost:8080", links: make(map[string]string)},
-			args: args{url: "https://google.com"},
-			want: "http://localhost:8080/1",
+			args:   args{url: "https://google.com"},
+			want:   "http://localhost:8080/1",
 		},
 	}
 
@@ -59,17 +59,17 @@ func TestShortener_RestoreLong(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "happy path",
-			fields: fields{prefix: "http://localhost:8080", links: happyPathMap},
-			args: args{id: "1"},
-			want: "https://google.com",
+			name:    "happy path",
+			fields:  fields{prefix: "http://localhost:8080", links: happyPathMap},
+			args:    args{id: "1"},
+			want:    "https://google.com",
 			wantErr: false,
 		},
 		{
-			name: "unhappy path",
-			fields: fields{prefix: "http://localhost:8080", links: make(map[string]string)},
-			args: args{id: "1"},
-			want: "",
+			name:    "unhappy path",
+			fields:  fields{prefix: "http://localhost:8080", links: make(map[string]string)},
+			args:    args{id: "1"},
+			want:    "",
 			wantErr: true,
 		},
 	}

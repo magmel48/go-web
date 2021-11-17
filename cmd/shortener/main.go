@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/magmel48/go-web/internal/app"
-	"net/http"
+	"github.com/valyala/fasthttp"
 	"os"
 )
 
@@ -19,9 +19,8 @@ func main() {
 	}
 
 	shortenerApp := app.NewApp(host, port)
-	http.HandleFunc("/", shortenerApp.HandleHTTPRequests)
+	err := fasthttp.ListenAndServe(host+":"+port, shortenerApp.HandleHTTPRequests)
 
-	err := http.ListenAndServe(host+":"+port, nil)
 	if err != nil {
 		panic(err)
 	}
