@@ -49,9 +49,9 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
-	rawId := ctx.UserValue("id")
+	rawID := ctx.UserValue("id")
 
-	switch id := rawId.(type) {
+	switch id := rawID.(type) {
 	case string:
 		initialURL, err := app.shortener.RestoreLong(id)
 		if err != nil {
