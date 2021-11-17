@@ -30,6 +30,18 @@ func serve(handler fasthttp.RequestHandler, req *fasthttp.Request, res *fasthttp
 	return client.Do(req, res)
 }
 
+func acquireRequest(method string, url string, body string) *fasthttp.Request {
+	request := fasthttp.AcquireRequest()
+	request.Header.SetMethod(method)
+	request.SetRequestURI(url)
+
+	if body != "" {
+		request.SetBody([]byte(body))
+	}
+
+	return request
+}
+
 func TestApp_handlePost(t *testing.T) {
 	type fields struct {
 		shortener shortener.Shortener
@@ -44,15 +56,8 @@ func TestApp_handlePost(t *testing.T) {
 		shortenedURL string
 	}
 
-	malformedURLInBodyRequest := fasthttp.AcquireRequest()
-	malformedURLInBodyRequest.Header.SetMethod(fasthttp.MethodPost)
-	malformedURLInBodyRequest.SetRequestURI("http://localhost:8080")
-	malformedURLInBodyRequest.SetBody([]byte("test"))
-
-	okURLInBodyRequest := fasthttp.AcquireRequest()
-	okURLInBodyRequest.Header.SetMethod(fasthttp.MethodPost)
-	okURLInBodyRequest.SetRequestURI("http://localhost:8080")
-	okURLInBodyRequest.SetBody([]byte("https://google.com"))
+	malformedURLInBodyRequest := acquireRequest(fasthttp.MethodPost, "http://localhost:8080", "test")
+	okURLInBodyRequest := acquireRequest(fasthttp.MethodPost, "http://localhost:8080", "https://google.com")
 
 	tests := []struct {
 		name   string
@@ -120,9 +125,7 @@ func TestApp_handleGet(t *testing.T) {
 		shortenedURL string
 	}
 
-	request := fasthttp.AcquireRequest()
-	request.Header.SetMethod(fasthttp.MethodGet)
-	request.SetRequestURI("http://localhost:8080/1")
+	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/1", "")
 
 	tests := []struct {
 		name   string
