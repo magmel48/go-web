@@ -19,7 +19,7 @@ func main() {
 	}
 
 	shortenerApp := app.NewApp(host, port)
-	err := fasthttp.ListenAndServe(host+":"+port, shortenerApp.HandleHTTPRequests)
+	err := fasthttp.ListenAndServe(host+":"+port, shortenerApp.HTTPHandler())
 
 	if err != nil {
 		panic(err)

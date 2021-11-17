@@ -2,11 +2,11 @@ package app
 
 import (
 	"fmt"
+	"github.com/buaazp/fasthttprouter"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 type App struct {
@@ -19,16 +19,13 @@ func NewApp(host string, port string) App {
 	}
 }
 
-// HandleHTTPRequests handles http requests.
-func (app App) HandleHTTPRequests(ctx *fasthttp.RequestCtx) {
-	switch string(ctx.Method()) {
-	case http.MethodPost:
-		app.handlePost(ctx)
-	case http.MethodGet:
-		app.handleGet(ctx)
-	default:
-		ctx.NotFound()
-	}
+// HTTPHandler handles http requests.
+func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
+	router := fasthttprouter.New()
+	router.POST("/", app.handlePost)
+	router.GET("/:id", app.handleGet)
+
+	return router.Handler
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
@@ -52,19 +49,19 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
-	path := strings.Split(string(ctx.Path()), "/")
-	if len(path) != 2 {
-		ctx.Error("cannot parse url", fasthttp.StatusBadRequest)
-		return
-	}
+	rawId := ctx.UserValue("id")
 
-	id := path[len(path)-1]
-	initialURL, err := app.shortener.RestoreLong(id)
-	if err != nil {
-		ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
-		return
-	}
+	switch id := rawId.(type) {
+	case string:
+		initialURL, err := app.shortener.RestoreLong(id)
+		if err != nil {
+			ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
+			return
+		}
 
-	ctx.Response.Header.Set("Location", initialURL)
-	ctx.SetStatusCode(http.StatusTemporaryRedirect)
+		ctx.Response.Header.Set("Location", initialURL)
+		ctx.SetStatusCode(http.StatusTemporaryRedirect)
+	default:
+		ctx.Error("wrong id param", http.StatusBadRequest)
+	}
 }

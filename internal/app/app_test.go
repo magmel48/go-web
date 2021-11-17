@@ -98,7 +98,7 @@ func TestApp_handlePost(t *testing.T) {
 				shortener: tt.fields.shortener,
 			}
 
-			err := serve(app.HandleHTTPRequests, tt.args.r, tt.args.w)
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
 			assert.NoError(t, err, "POST request error")
 
 			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
@@ -153,7 +153,7 @@ func TestApp_handleGet(t *testing.T) {
 				shortener: tt.fields.shortener,
 			}
 
-			err := serve(app.HandleHTTPRequests, tt.args.r, tt.args.w)
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
 			assert.NoError(t, err, "GET request error")
 
 			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
