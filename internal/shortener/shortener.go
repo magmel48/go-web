@@ -1,12 +1,9 @@
 package shortener
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
-	"strings"
 )
 
 var linksDelimiter = "|"
@@ -15,28 +12,18 @@ var linksDelimiter = "|"
 type Shortener struct {
 	prefix string
 	links  map[string]string
-	file   *os.File
+	backup Backup
 }
 
 // NewShortener creates new shortener.
-func NewShortener(prefix string) Shortener {
-	storagePath := os.Getenv("FILE_STORAGE_PATH")
-	if storagePath == "" {
-		storagePath = "links.txt"
-	}
-
-	file, err := os.OpenFile(storagePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
-	if err != nil {
-		panic(err)
-	}
-
+func NewShortener(prefix string, store Backup) Shortener {
 	shortener := Shortener{
 		prefix: prefix,
 		links:  make(map[string]string),
-		file:   file,
+		backup: store,
 	}
 
-	shortener.retrieveStoredLinks(file)
+	shortener.retrieveStoredLinks()
 
 	return shortener
 }
@@ -56,7 +43,7 @@ func (s Shortener) MakeShorter(link string) (string, error) {
 		id = fmt.Sprintf("%d", len(s.links)+1)
 		s.links[link] = id
 
-		s.storeLinkOnDisk(link, id)
+		s.storeLink(link, id)
 	}
 
 	return fmt.Sprintf("%s/%s", s.prefix, id), nil
@@ -73,24 +60,14 @@ func (s Shortener) RestoreLong(id string) (string, error) {
 	return "", errors.New("not found")
 }
 
-func (s Shortener) storeLinkOnDisk(link string, id string) {
-	newRecord := fmt.Sprintf("%s%s%s\n", link, linksDelimiter, id)
-
-	_, err := s.file.Write([]byte(newRecord))
-	if err != nil {
-		panic(err)
-	}
+func (s Shortener) storeLink(link string, id string) {
+	record := fmt.Sprintf("%s%s%s\n", link, linksDelimiter, id)
+	s.backup.Append(record)
 }
 
-func (s Shortener) retrieveStoredLinks(file *os.File) {
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-
-	for scanner.Scan() {
-		line := strings.Split(scanner.Text(), linksDelimiter)
-
-		if len(line) > 1 {
-			s.links[line[0]] = line[1]
-		}
+func (s Shortener) retrieveStoredLinks() {
+	links := s.backup.ReadAll()
+	for k, v := range links {
+		s.links[k] = v
 	}
 }

@@ -32,8 +32,15 @@ func NewApp(address string) App {
 		baseURL = address
 	}
 
+	filePath := os.Getenv("FILE_STORAGE_PATH")
+	if filePath == "" {
+		filePath = "links.txt"
+	}
+
+	fileBackup := shortener.NewFileBackup(filePath)
+
 	return App{
-		shortener: shortener.NewShortener(baseURL),
+		shortener: shortener.NewShortener(baseURL, fileBackup),
 	}
 }
 

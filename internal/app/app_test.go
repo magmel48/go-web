@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"github.com/magmel48/go-web/internal/shortener"
+	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttputil"
@@ -76,7 +77,9 @@ func TestApp_handlePost(t *testing.T) {
 	}{
 		{
 			name:   "malformed url",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: malformedURLInBodyRequest,
@@ -88,7 +91,7 @@ func TestApp_handlePost(t *testing.T) {
 		},
 		{
 			name:   "happy path",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
+			fields: fields{shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{})},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: okURLInBodyRequest,
@@ -155,7 +158,9 @@ func TestApp_handleJSONPost(t *testing.T) {
 	}{
 		{
 			name:   "wrong Content-Type header",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: wrongContentTypeRequest,
@@ -167,7 +172,9 @@ func TestApp_handleJSONPost(t *testing.T) {
 		},
 		{
 			name:   "malformed url",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: malformedURLInBodyRequest,
@@ -179,7 +186,9 @@ func TestApp_handleJSONPost(t *testing.T) {
 		},
 		{
 			name:   "happy path",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: okURLInBodyRequest,
@@ -239,7 +248,9 @@ func TestApp_handleGet(t *testing.T) {
 	}{
 		{
 			name:   "no url found for fresh db in shortener",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: request,
