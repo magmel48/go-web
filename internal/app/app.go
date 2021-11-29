@@ -27,13 +27,13 @@ type Result struct {
 
 // NewApp creates new app that handles requests for making url shorter.
 func NewApp(address string) App {
-	baseUrl := os.Getenv("BASE_URL")
-	if baseUrl == "" {
-		baseUrl = address
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = address
 	}
 
 	return App{
-		shortener: shortener.NewShortener(baseUrl),
+		shortener: shortener.NewShortener(baseURL),
 	}
 }
 
