@@ -3,6 +3,7 @@ package shortener
 import (
 	"errors"
 	"fmt"
+	"net/url"
 )
 
 // Shortener makes links shorter.
@@ -19,17 +20,22 @@ func NewShortener(prefix string) Shortener {
 	}
 }
 
-func (s Shortener) MakeShorter(url string) string {
-	id := ""
-
-	if link, ok := s.links[url]; ok {
-		id = link
-	} else {
-		id = fmt.Sprintf("%d", len(s.links)+1)
-		s.links[url] = id
+func (s Shortener) MakeShorter(link string) (string, error) {
+	_, err := url.ParseRequestURI(link)
+	if err != nil {
+		return "", errors.New("cannot parse url")
 	}
 
-	return fmt.Sprintf("%s/%s", s.prefix, id)
+	id := ""
+
+	if storedLink, ok := s.links[link]; ok {
+		id = storedLink
+	} else {
+		id = fmt.Sprintf("%d", len(s.links)+1)
+		s.links[link] = id
+	}
+
+	return fmt.Sprintf("%s/%s", s.prefix, id), nil
 }
 
 func (s Shortener) RestoreLong(id string) (string, error) {

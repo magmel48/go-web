@@ -32,8 +32,8 @@ func TestShortener_MakeShorter(t *testing.T) {
 				links:  tt.fields.links,
 			}
 
-			if got := s.MakeShorter(tt.args.url); got != tt.want {
-				t.Errorf("MakeShorter() = %v, want %v", got, tt.want)
+			if got, err := s.MakeShorter(tt.args.url); got != tt.want || err != nil {
+				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
 			}
 		})
 	}
