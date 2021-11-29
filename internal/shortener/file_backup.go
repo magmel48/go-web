@@ -6,12 +6,14 @@ import (
 	"strings"
 )
 
+type OpenFile func(name string, flag int, perm os.FileMode) (*os.File, error)
+
 type FileBackup struct {
 	file *os.File
 }
 
-func NewFileBackup(filePath string) FileBackup {
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
+func NewFileBackup(filePath string, openFile OpenFile) FileBackup {
+	file, err := openFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
 		panic(err)
 	}

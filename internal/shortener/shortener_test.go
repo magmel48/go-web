@@ -2,6 +2,7 @@ package shortener
 
 import (
 	"github.com/magmel48/go-web/internal/shortener/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
@@ -15,8 +16,8 @@ func TestShortener_MakeShorter(t *testing.T) {
 		url string
 	}
 
-	MockBackup := &mocks.Backup{}
-	MockBackup.On("Append", mock.AnythingOfType("string")).Return()
+	mockBackup := &mocks.Backup{}
+	mockBackup.On("Append", mock.AnythingOfType("string")).Return()
 
 	tests := []struct {
 		name   string
@@ -37,11 +38,13 @@ func TestShortener_MakeShorter(t *testing.T) {
 			s := Shortener{
 				prefix: tt.fields.prefix,
 				links:  tt.fields.links,
-				backup: MockBackup,
+				backup: mockBackup,
 			}
 
 			if got, err := s.MakeShorter(tt.args.url); got != tt.want || err != nil {
 				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
+			} else {
+				assert.Equal(t, len(mockBackup.Calls), 1)
 			}
 		})
 	}

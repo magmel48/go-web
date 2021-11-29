@@ -37,7 +37,7 @@ func NewApp(address string) App {
 		filePath = "links.txt"
 	}
 
-	fileBackup := shortener.NewFileBackup(filePath)
+	fileBackup := shortener.NewFileBackup(filePath, os.OpenFile)
 
 	return App{
 		shortener: shortener.NewShortener(baseURL, fileBackup),
