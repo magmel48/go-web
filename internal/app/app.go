@@ -2,29 +2,38 @@ package app
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/buaazp/fasthttprouter"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"net/http"
+	"os"
 	"strings"
 )
 
+// App makes urls shorter.
 type App struct {
 	shortener shortener.Shortener
 }
 
+// Payload represents payload of request to /api/shorten.
 type Payload struct {
 	URL string `json:"url"`
 }
 
+// Result represents response from /api/shorten.
 type Result struct {
 	Result string `json:"result"`
 }
 
-func NewApp(host string, port string) App {
+// NewApp creates new app that handles requests for making url shorter.
+func NewApp(address string) App {
+	baseUrl := os.Getenv("BASE_URL")
+	if baseUrl == "" {
+		baseUrl = address
+	}
+
 	return App{
-		shortener: shortener.NewShortener(fmt.Sprintf("http://%s:%s", host, port)),
+		shortener: shortener.NewShortener(baseUrl),
 	}
 }
 

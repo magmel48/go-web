@@ -20,6 +20,7 @@ func NewShortener(prefix string) Shortener {
 	}
 }
 
+// MakeShorter makes a link shorter.
 func (s Shortener) MakeShorter(link string) (string, error) {
 	_, err := url.ParseRequestURI(link)
 	if err != nil {
@@ -38,6 +39,7 @@ func (s Shortener) MakeShorter(link string) (string, error) {
 	return fmt.Sprintf("%s/%s", s.prefix, id), nil
 }
 
+// RestoreLong restores short link to initial state if an info was stored before.
 func (s Shortener) RestoreLong(id string) (string, error) {
 	for k, v := range s.links {
 		if v == id {

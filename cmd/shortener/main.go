@@ -7,19 +7,14 @@ import (
 )
 
 func main() {
-	host := os.Getenv("SERVER_HOST")
-	port := os.Getenv("SERVER_PORT")
+	address := os.Getenv("SERVER_ADDRESS")
 
-	if host == "" {
-		host = "localhost"
+	if address == "" {
+		address = "localhost:8080"
 	}
 
-	if port == "" {
-		port = "8080"
-	}
-
-	shortenerApp := app.NewApp(host, port)
-	err := fasthttp.ListenAndServe(host+":"+port, shortenerApp.HTTPHandler())
+	shortenerApp := app.NewApp("http://" + address)
+	err := fasthttp.ListenAndServe(address, shortenerApp.HTTPHandler())
 
 	if err != nil {
 		panic(err)
