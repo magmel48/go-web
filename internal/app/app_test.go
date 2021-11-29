@@ -138,7 +138,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 	headers["Content-Type"] = "application/json"
 
 	malformedBody, _ := json.Marshal("[1,2,3]")
-	okBody, _ := json.Marshal(Payload{Url: "https://google.com"})
+	okBody, _ := json.Marshal(Payload{URL: "https://google.com"})
 
 	wrongContentTypeRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080/api/shorten", string(okBody), emptyHeaders)
@@ -154,7 +154,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		want   want
 	}{
 		{
-			name: "wrong Content-Type header",
+			name:   "wrong Content-Type header",
 			fields: fields{shortener: shortener.NewShortener("http://localhost:8080")},
 			args: args{
 				w: fasthttp.AcquireResponse(),

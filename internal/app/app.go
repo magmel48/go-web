@@ -15,7 +15,7 @@ type App struct {
 }
 
 type Payload struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 type Result struct {
@@ -48,7 +48,7 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 	shortURL, err := app.shortener.MakeShorter(body)
 
 	if err != nil {
-		ctx.Error( err.Error(), fasthttp.StatusBadRequest)
+		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		return
 	}
 
@@ -73,13 +73,13 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	shortURL, err := app.shortener.MakeShorter(payload.Url)
+	shortURL, err := app.shortener.MakeShorter(payload.URL)
 	if err != nil {
-		ctx.Error( err.Error(), fasthttp.StatusBadRequest)
+		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		return
 	}
 
-	result := Result {
+	result := Result{
 		Result: shortURL,
 	}
 
