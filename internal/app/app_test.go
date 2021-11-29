@@ -5,6 +5,7 @@ import (
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"net"
@@ -64,6 +65,10 @@ func TestApp_handlePost(t *testing.T) {
 		shortenedURL string
 	}
 
+	mockBackup := &mocks.Backup{}
+	mockBackup.On("ReadAll").Return(make(map[string]string))
+	mockBackup.On("Append", mock.AnythingOfType("string")).Return()
+
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080", "test", emptyHeaders)
 	okURLInBodyRequest := acquireRequest(
@@ -78,7 +83,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name:   "malformed url",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -91,7 +96,7 @@ func TestApp_handlePost(t *testing.T) {
 		},
 		{
 			name:   "happy path",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{})},
+			fields: fields{shortener: shortener.NewShortener("http://localhost:8080", mockBackup)},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: okURLInBodyRequest,
@@ -137,6 +142,10 @@ func TestApp_handleJSONPost(t *testing.T) {
 		result      Result
 	}
 
+	mockBackup := &mocks.Backup{}
+	mockBackup.On("ReadAll").Return(make(map[string]string))
+	mockBackup.On("Append", mock.AnythingOfType("string")).Return()
+
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
 
@@ -159,7 +168,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name:   "wrong Content-Type header",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -173,7 +182,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name:   "malformed url",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -187,7 +196,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name:   "happy path",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -238,6 +247,9 @@ func TestApp_handleGet(t *testing.T) {
 		shortenedURL string
 	}
 
+	mockBackup := &mocks.Backup{}
+	mockBackup.On("ReadAll").Return(make(map[string]string))
+
 	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/1", "", emptyHeaders)
 
 	tests := []struct {
@@ -249,7 +261,7 @@ func TestApp_handleGet(t *testing.T) {
 		{
 			name:   "no url found for fresh db in shortener",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", &mocks.Backup{}),
+				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
