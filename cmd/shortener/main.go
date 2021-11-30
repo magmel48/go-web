@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+var defaultProtocol = "http://"
+
 func main() {
 	var address string
 	var appDomain string
@@ -22,7 +24,7 @@ func main() {
 		address = "localhost:8080"
 	}
 
-	addressComponents := strings.Split(address, "//")
+	addressComponents := strings.Split(address, defaultProtocol)
 	if len(addressComponents) > 1 {
 		appDomain = addressComponents[1]
 	} else {
@@ -31,6 +33,10 @@ func main() {
 
 	if baseShortenerURL == "" {
 		baseShortenerURL = address
+
+		if strings.Index(baseShortenerURL, defaultProtocol) != 0 {
+			baseShortenerURL = defaultProtocol + baseShortenerURL
+		}
 	}
 
 	fmt.Printf("starting on %s with %s as base url\n", appDomain, baseShortenerURL)
