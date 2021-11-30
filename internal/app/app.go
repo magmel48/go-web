@@ -26,12 +26,7 @@ type Result struct {
 }
 
 // NewApp creates new app that handles requests for making url shorter.
-func NewApp(address string) App {
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = address
-	}
-
+func NewApp(baseURL string) App {
 	filePath := os.Getenv("FILE_STORAGE_PATH")
 	if filePath == "" {
 		filePath = "links.txt"
