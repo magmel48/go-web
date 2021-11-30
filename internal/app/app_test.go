@@ -81,7 +81,7 @@ func TestApp_handlePost(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "malformed url",
+			name: "malformed url",
 			fields: fields{
 				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
@@ -166,7 +166,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "wrong Content-Type header",
+			name: "wrong Content-Type header",
 			fields: fields{
 				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
@@ -180,7 +180,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 			},
 		},
 		{
-			name:   "malformed url",
+			name: "malformed url",
 			fields: fields{
 				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
@@ -194,7 +194,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 			},
 		},
 		{
-			name:   "happy path",
+			name: "happy path",
 			fields: fields{
 				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},
@@ -259,7 +259,7 @@ func TestApp_handleGet(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "no url found for fresh db in shortener",
+			name: "no url found for fresh db in shortener",
 			fields: fields{
 				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
 			},

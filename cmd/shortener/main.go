@@ -1,48 +1,19 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/magmel48/go-web/internal/app"
+	"github.com/magmel48/go-web/internal/config"
 	"github.com/valyala/fasthttp"
-	"os"
-	"strings"
 )
 
-var defaultProtocol = "http://"
-
 func main() {
-	var address string
-	var appDomain string
-	var baseShortenerURL string
+	config.Parse()
 
-	flag.StringVar(&address,"a", os.Getenv("SERVER_ADDRESS"), "server address")
-	flag.StringVar(&baseShortenerURL, "b", os.Getenv("BASE_URL"), "base url for shortened urls")
-	flag.Parse()
+	fmt.Printf("starting on %s with %s as base url\n", config.AppDomain, config.BaseShortenerURL)
 
-	if address == "" {
-		address = "localhost:8080"
-	}
-
-	addressComponents := strings.Split(address, defaultProtocol)
-	if len(addressComponents) > 1 {
-		appDomain = addressComponents[1]
-	} else {
-		appDomain = addressComponents[0]
-	}
-
-	if baseShortenerURL == "" {
-		baseShortenerURL = address
-
-		if strings.Index(baseShortenerURL, defaultProtocol) != 0 {
-			baseShortenerURL = defaultProtocol + baseShortenerURL
-		}
-	}
-
-	fmt.Printf("starting on %s with %s as base url\n", appDomain, baseShortenerURL)
-
-	shortenerApp := app.NewApp(baseShortenerURL)
-	err := fasthttp.ListenAndServe(appDomain, shortenerApp.HTTPHandler())
+	shortenerApp := app.NewApp(config.BaseShortenerURL)
+	err := fasthttp.ListenAndServe(config.AppDomain, shortenerApp.HTTPHandler())
 
 	if err != nil {
 		panic(err)

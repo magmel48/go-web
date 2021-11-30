@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"github.com/buaazp/fasthttprouter"
+	"github.com/magmel48/go-web/internal/config"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"net/http"
@@ -27,12 +28,7 @@ type Result struct {
 
 // NewApp creates new app that handles requests for making url shorter.
 func NewApp(baseURL string) App {
-	filePath := os.Getenv("FILE_STORAGE_PATH")
-	if filePath == "" {
-		filePath = "links.txt"
-	}
-
-	fileBackup := shortener.NewFileBackup(filePath, os.OpenFile)
+	fileBackup := shortener.NewFileBackup(config.FilePath, os.OpenFile)
 
 	return App{
 		shortener: shortener.NewShortener(baseURL, fileBackup),
