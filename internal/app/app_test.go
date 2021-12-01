@@ -67,7 +67,7 @@ func TestApp_handlePost(t *testing.T) {
 
 	mockBackup := &mocks.Backup{}
 	mockBackup.On("ReadAll").Return(make(map[string]string))
-	mockBackup.On("Append", mock.AnythingOfType("string")).Return()
+	mockBackup.On("Append", mock.AnythingOfType("string")).Return(nil)
 
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080", "test", emptyHeaders)
@@ -144,7 +144,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 
 	mockBackup := &mocks.Backup{}
 	mockBackup.On("ReadAll").Return(make(map[string]string))
-	mockBackup.On("Append", mock.AnythingOfType("string")).Return()
+	mockBackup.On("Append", mock.AnythingOfType("string")).Return(nil)
 
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"

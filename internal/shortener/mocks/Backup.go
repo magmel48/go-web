@@ -10,8 +10,17 @@ type Backup struct {
 }
 
 // Append provides a mock function with given fields: line
-func (_m *Backup) Append(line string) {
-	_m.Called(line)
+func (_m *Backup) Append(line string) error {
+	ret := _m.Called(line)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(line)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // ReadAll provides a mock function with given fields:

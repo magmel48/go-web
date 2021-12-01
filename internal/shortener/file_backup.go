@@ -15,25 +15,24 @@ type FileBackup struct {
 }
 
 // NewFileBackup creates new file backup.
-func NewFileBackup(filePath string, openFile OpenFile) FileBackup {
+func NewFileBackup(filePath string, openFile OpenFile) (*FileBackup, error) {
 	file, err := openFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return FileBackup{file: file}
+	backup := FileBackup{file: file}
+	return &backup, nil
 }
 
 // Append appends a record to existing stored records on disk.
-func (fb FileBackup) Append(record string) {
+func (fb *FileBackup) Append(record string) error {
 	_, err := fb.file.Write([]byte(record))
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 // ReadAll reads all stored data from disk.
-func (fb FileBackup) ReadAll() map[string]string {
+func (fb *FileBackup) ReadAll() map[string]string {
 	result := make(map[string]string)
 
 	scanner := bufio.NewScanner(fb.file)

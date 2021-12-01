@@ -28,7 +28,10 @@ type Result struct {
 
 // NewApp creates new app that handles requests for making url shorter.
 func NewApp(baseURL string) App {
-	fileBackup := shortener.NewFileBackup(config.FilePath, os.OpenFile)
+	fileBackup, err := shortener.NewFileBackup(config.FilePath, os.OpenFile)
+	if err != nil {
+		panic(err)
+	}
 
 	return App{
 		shortener: shortener.NewShortener(baseURL, fileBackup),

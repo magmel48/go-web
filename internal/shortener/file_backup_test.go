@@ -32,8 +32,9 @@ func TestNewFileBackup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewFileBackup(tt.args.filePath, mockOpenFile.Execute); !assert.Equal(t, len(mockOpenFile.Calls), 1) {
+			if got, err := NewFileBackup(tt.args.filePath, mockOpenFile.Execute); !assert.Equal(t, len(mockOpenFile.Calls), 1) {
 				t.Errorf("NewFileBackup() = %v, want %v", got, tt.want)
+				assert.NoError(t, err)
 			} else {
 				assert.Equal(t, mockOpenFile.Calls[0].Arguments[0], tt.want)
 			}

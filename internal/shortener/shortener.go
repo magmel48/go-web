@@ -3,6 +3,7 @@ package shortener
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 )
 
@@ -62,7 +63,11 @@ func (s Shortener) RestoreLong(id string) (string, error) {
 
 func (s Shortener) storeLink(link string, id string) {
 	record := fmt.Sprintf("%s%s%s\n", link, linksDelimiter, id)
-	s.backup.Append(record)
+	err := s.backup.Append(record)
+
+	if err != nil {
+		log.Printf("not able to store link %s", link)
+	}
 }
 
 func (s Shortener) retrieveStoredLinks() {
