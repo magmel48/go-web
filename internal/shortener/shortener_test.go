@@ -1,15 +1,25 @@
 package shortener
 
-import "testing"
+import (
+	"fmt"
+	"github.com/magmel48/go-web/internal/shortener/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"testing"
+)
 
 func TestShortener_MakeShorter(t *testing.T) {
 	type fields struct {
 		prefix string
 		links  map[string]string
+		backup Backup
 	}
 	type args struct {
 		url string
 	}
+
+	backup := &mocks.Backup{}
+	backup.On("Append", mock.AnythingOfType("string")).Return(nil)
 
 	tests := []struct {
 		name   string
@@ -19,7 +29,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 	}{
 		{
 			name:   "happy path",
-			fields: fields{prefix: "http://localhost:8080", links: make(map[string]string)},
+			fields: fields{prefix: "http://localhost:8080", links: make(map[string]string), backup: backup},
 			args:   args{url: "https://google.com"},
 			want:   "http://localhost:8080/1",
 		},
@@ -30,10 +40,13 @@ func TestShortener_MakeShorter(t *testing.T) {
 			s := Shortener{
 				prefix: tt.fields.prefix,
 				links:  tt.fields.links,
+				backup: backup,
 			}
 
-			if got := s.MakeShorter(tt.args.url); got != tt.want {
-				t.Errorf("MakeShorter() = %v, want %v", got, tt.want)
+			if got, err := s.MakeShorter(tt.args.url); got != tt.want || err != nil {
+				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
+			} else {
+				assert.Equal(t, len(backup.Calls), 1)
 			}
 		})
 	}
@@ -43,6 +56,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 	type fields struct {
 		prefix string
 		links  map[string]string
+		backup Backup
 	}
 	type args struct {
 		id string
@@ -50,6 +64,8 @@ func TestShortener_RestoreLong(t *testing.T) {
 
 	happyPathMap := make(map[string]string)
 	happyPathMap["https://google.com"] = "1"
+
+	backup := &mocks.Backup{}
 
 	tests := []struct {
 		name    string
@@ -60,7 +76,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 	}{
 		{
 			name:    "happy path",
-			fields:  fields{prefix: "http://localhost:8080", links: happyPathMap},
+			fields:  fields{prefix: "http://localhost:8080", links: happyPathMap, backup: backup},
 			args:    args{id: "1"},
 			want:    "https://google.com",
 			wantErr: false,
@@ -79,6 +95,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 			s := Shortener{
 				prefix: tt.fields.prefix,
 				links:  tt.fields.links,
+				backup: &mocks.Backup{},
 			}
 
 			got, err := s.RestoreLong(tt.args.id)
@@ -90,6 +107,47 @@ func TestShortener_RestoreLong(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("RestoreLong() got = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestShortener_storeLink(t *testing.T) {
+	type fields struct {
+		prefix string
+		links  map[string]string
+		backup Backup
+	}
+	type args struct {
+		link string
+		id   string
+	}
+
+	backup := &mocks.Backup{}
+	backup.On("Append", mock.AnythingOfType("string")).Return(nil)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name:   "should call Append method of backup field",
+			fields: fields{backup: backup},
+			args:   args{link: "https://google.com/", id: "2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Shortener{
+				prefix: tt.fields.prefix,
+				links:  tt.fields.links,
+				backup: tt.fields.backup,
+			}
+
+			s.storeLink(tt.args.link, tt.args.id)
+
+			assert.Equal(t, fmt.Sprintf("%s|%s\n", tt.args.link, tt.args.id), backup.Calls[0].Arguments[0])
 		})
 	}
 }

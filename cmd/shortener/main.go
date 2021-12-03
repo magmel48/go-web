@@ -1,25 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"github.com/magmel48/go-web/internal/app"
+	"github.com/magmel48/go-web/internal/config"
 	"github.com/valyala/fasthttp"
-	"os"
 )
 
 func main() {
-	host := os.Getenv("SERVER_HOST")
-	port := os.Getenv("SERVER_PORT")
+	config.Parse()
 
-	if host == "" {
-		host = "localhost"
-	}
+	fmt.Printf("starting on %s with %s as base url\n", config.AppDomain, config.BaseShortenerURL)
 
-	if port == "" {
-		port = "8080"
-	}
-
-	shortenerApp := app.NewApp(host, port)
-	err := fasthttp.ListenAndServe(host+":"+port, shortenerApp.HTTPHandler())
+	shortenerApp := app.NewApp(config.BaseShortenerURL)
+	err := fasthttp.ListenAndServe(config.AppDomain, shortenerApp.HTTPHandler())
 
 	if err != nil {
 		panic(err)
