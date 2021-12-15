@@ -8,7 +8,6 @@ import (
 	"github.com/valyala/fasthttp"
 	"net/http"
 	"os"
-	"strings"
 )
 
 // App makes urls shorter.
@@ -45,7 +44,8 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router.POST("/api/shorten", app.handleJSONPost)
 	router.GET("/:id", app.handleGet)
 
-	return fasthttp.CompressHandlerLevel(router.Handler, fasthttp.CompressBestSpeed)
+	return fasthttp.CompressHandlerBrotliLevel(
+		router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
@@ -69,12 +69,6 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 	var payload Payload
-
-	contentType := ctx.Request.Header.Peek("Content-Type")
-	if strings.Index(string(contentType), "application/json") != 0 {
-		ctx.Error("wrong Content-Type header", fasthttp.StatusBadRequest)
-		return
-	}
 
 	body := ctx.PostBody()
 	err := json.Unmarshal(body, &payload)
