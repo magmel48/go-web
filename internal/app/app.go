@@ -45,7 +45,7 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router.POST("/api/shorten", app.handleJSONPost)
 	router.GET("/:id", app.handleGet)
 
-	return router.Handler
+	return fasthttp.CompressHandlerLevel(router.Handler, fasthttp.CompressBestSpeed)
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
