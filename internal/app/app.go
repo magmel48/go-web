@@ -37,6 +37,25 @@ func NewApp(baseURL string) App {
 	}
 }
 
+// CompressHandler reads compressed request payload and decodes it.
+func CompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
+	return func(ctx *fasthttp.RequestCtx) {
+		contentEncoding := ctx.Request.Header.Peek("Content-Encoding")
+		switch string(contentEncoding) {
+		case "gzip":
+			body, err := ctx.Request.BodyGunzip()
+			if err != nil {
+				ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+				return
+			}
+
+			ctx.Request.SetBody(body)
+		}
+
+		h(ctx)
+	}
+}
+
 // HTTPHandler handles http requests.
 func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router := fasthttprouter.New()
@@ -44,8 +63,9 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router.POST("/api/shorten", app.handleJSONPost)
 	router.GET("/:id", app.handleGet)
 
-	return fasthttp.CompressHandlerBrotliLevel(
-		router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)
+	return CompressHandler(
+		fasthttp.CompressHandlerBrotliLevel(
+			router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed))
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
