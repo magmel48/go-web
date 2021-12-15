@@ -49,12 +49,12 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
-	if ctx.PostBody() == nil {
+	if ctx.Request.Body() == nil {
 		ctx.Error("empty request body", fasthttp.StatusBadRequest)
 		return
 	}
 
-	body := string(ctx.PostBody())
+	body := string(ctx.Request.Body())
 	shortURL, err := app.shortener.MakeShorter(body)
 
 	if err != nil {
@@ -70,7 +70,7 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 	var payload Payload
 
-	body := ctx.PostBody()
+	body := ctx.Request.Body()
 	err := json.Unmarshal(body, &payload)
 	if err != nil {
 		ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
