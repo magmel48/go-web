@@ -45,7 +45,7 @@ func CompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 		case "gzip":
 			body, err := ctx.Request.BodyGunzip()
 			if err != nil {
-				ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+				ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 				return
 			}
 
