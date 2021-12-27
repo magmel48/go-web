@@ -2,7 +2,9 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/buaazp/fasthttprouter"
+	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/config"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
@@ -13,6 +15,7 @@ import (
 // App makes urls shorter.
 type App struct {
 	shortener shortener.Shortener
+	auth      auth.Auth
 }
 
 // Payload represents payload of request to /api/shorten.
@@ -32,13 +35,32 @@ func NewApp(baseURL string) App {
 		panic(err)
 	}
 
+	authenticator, err := auth.NewCustomAuth()
+	if err != nil {
+		panic(err)
+	}
+
 	return App{
 		shortener: shortener.NewShortener(baseURL, fileBackup),
+		auth: authenticator,
 	}
 }
 
-// CompressHandler reads compressed request payload and decodes it.
-func CompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
+// HTTPHandler handles http requests.
+func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
+	router := fasthttprouter.New()
+	router.POST("/", app.handlePost)
+	router.POST("/api/shorten", app.handleJSONPost)
+	router.GET("/:id", app.handleGet)
+
+	return cookiesHandler(
+		decompressHandler( // only for reading request
+			fasthttp.CompressHandlerBrotliLevel( // only for writing response
+				router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
+}
+
+// decompressHandler reads compressed request payload and decodes it.
+func decompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		contentEncoding := ctx.Request.Header.Peek("Content-Encoding")
 		switch string(contentEncoding) {
@@ -56,16 +78,22 @@ func CompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 	}
 }
 
-// HTTPHandler handles http requests.
-func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
-	router := fasthttprouter.New()
-	router.POST("/", app.handlePost)
-	router.POST("/api/shorten", app.handleJSONPost)
-	router.GET("/:id", app.handleGet)
+// cookiesHandler sets and validates proper cookies.
+func cookiesHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
+	return func(ctx *fasthttp.RequestCtx) {
+		sessionCookie := ctx.Request.Header.Cookie("session")
+		if sessionCookie == nil {
+			cookie := fasthttp.Cookie{}
+			cookie.SetKey("session")
+			//cookie.SetValue() // TODO get app somehow
 
-	return CompressHandler( // only for reading request
-		fasthttp.CompressHandlerBrotliLevel( // only for writing response
-			router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed))
+			ctx.Response.Header.SetCookie(&cookie)
+		} else {
+			// FIXME check validity
+		}
+
+		h(ctx)
+	}
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
@@ -119,6 +147,8 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
+	fmt.Println(ctx.Path())
+
 	rawID := ctx.UserValue("id")
 
 	switch id := rawID.(type) {
@@ -134,4 +164,8 @@ func (app App) handleGet(ctx *fasthttp.RequestCtx) {
 	default:
 		ctx.Error("wrong id param", http.StatusBadRequest)
 	}
+}
+
+func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
+	// TODO
 }
