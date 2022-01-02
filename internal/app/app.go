@@ -93,20 +93,22 @@ func decompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 	return func(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 		return func(ctx *fasthttp.RequestCtx) {
-			sessionCookie := ctx.Request.Header.Cookie("session")
-			_, err := authenticator.Decode(sessionCookie)
+			if authenticator != nil {
+				sessionCookie := ctx.Request.Header.Cookie("session")
+				_, err := authenticator.Decode(sessionCookie)
 
-			// sets cookie if it's not valid (empty or wrong encoded)
-			if err != nil {
-				log.Println("user session invalidation error", err)
+				// sets cookie if it's not valid (empty or wrong encoded)
+				if err != nil {
+					log.Println("user session invalidation error", err)
 
-				userToken, _ := authenticator.Encode(auth.NewUserID())
+					userToken, _ := authenticator.Encode(auth.NewUserID())
 
-				cookie := fasthttp.Cookie{}
-				cookie.SetKey("session")
-				cookie.SetValue(string(userToken))
+					cookie := fasthttp.Cookie{}
+					cookie.SetKey("session")
+					cookie.SetValue(string(userToken))
 
-				ctx.Response.Header.SetCookie(&cookie)
+					ctx.Response.Header.SetCookie(&cookie)
+				}
 			}
 
 			h(ctx)
