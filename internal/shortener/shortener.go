@@ -16,6 +16,11 @@ type Shortener struct {
 	backup Backup
 }
 
+type UrlsMap struct {
+	ShortUrl    string `json:"short_url"`
+	OriginalUrl string `json:"original_url"`
+}
+
 // NewShortener creates new shortener.
 func NewShortener(prefix string, store Backup) Shortener {
 	shortener := Shortener{

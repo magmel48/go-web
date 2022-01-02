@@ -10,8 +10,13 @@ type NonceFunc func(nonceSize int) ([]byte, error)
 // UserID hides real user id implementation.
 type UserID = uuid.UUID
 
+// NewUserID generates new random user identifier.
+func NewUserID() UserID {
+	return uuid.New()
+}
+
 //go:generate mockery --name=Auth
 type Auth interface {
-	Decode(sequence []byte) (uuid.UUID, error)
+	Decode(sequence []byte) (UserID, error)
 	Encode(id UserID) ([]byte, error)
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"github.com/google/uuid"
 	"github.com/magmel48/go-web/internal/config"
 )
@@ -33,6 +34,10 @@ func NewCustomAuth() (*CustomAuth, error) {
 // Decode decodes encoded sequence (usually from user session)
 // and returns user identifier if the input sequence is valid.
 func (auth CustomAuth) Decode(sequence []byte) (UserID, error) {
+	if len(sequence) == 0 {
+		return uuid.New(), errors.New("wrong bytes sequence")
+	}
+
 	encoded := make([]byte, base64.RawStdEncoding.DecodedLen(len(sequence)))
 
 	_, err := base64.RawStdEncoding.Decode(encoded, sequence)
