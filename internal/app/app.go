@@ -152,6 +152,4 @@ func (app App) handlePing(ctx *fasthttp.RequestCtx) {
 	if !db.CheckConnection() {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	}
-
-	return
 }
