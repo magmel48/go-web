@@ -2,12 +2,12 @@ package app
 
 import (
 	"encoding/json"
-	fasthttprouter "github.com/fasthttp/router"
 	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/config"
 	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
+	"github.com/vardius/gorouter/v4"
 	"os"
 )
 
@@ -47,7 +47,7 @@ func NewApp(baseURL string) App {
 
 // HTTPHandler handles http requests.
 func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
-	router := fasthttprouter.New()
+	router := gorouter.NewFastHTTPRouter()
 	router.POST("/", app.handlePost)
 	router.POST("/api/shorten", app.handleJSONPost)
 	router.GET("/{id:[0-9]+}", app.handleGet)
@@ -57,7 +57,7 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	return cookiesHandler(app.authenticator)(
 		decompressHandler( // only for reading request
 			fasthttp.CompressHandlerBrotliLevel( // only for writing response
-				router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
+				router.HandleFastHTTP, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {

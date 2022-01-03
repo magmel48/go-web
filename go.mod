@@ -3,11 +3,11 @@ module github.com/magmel48/go-web
 go 1.17
 
 require (
-	github.com/fasthttp/router v1.4.4
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.31.0
+	github.com/vardius/gorouter/v4 v4.5.1
 )
 
 require (
@@ -22,7 +22,6 @@ require (
 	github.com/jackc/pgtype v1.9.1 // indirect
 	github.com/klauspost/compress v1.13.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/savsgio/gotils v0.0.0-20210921075833-21a6215cb0e4 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
