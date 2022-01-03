@@ -44,7 +44,7 @@ func Parse() {
 	}
 
 	if FilePath == "" {
-		FilePath = "links.txt"
+		FilePath = "backup.txt"
 	}
 
 	if SecretKey == "" {

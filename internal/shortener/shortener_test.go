@@ -55,7 +55,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 			if got, err := s.MakeShorter(tt.args.url, auth.NewUserID()); got != tt.want || err != nil {
 				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
 			} else {
-				assert.Equal(t, len(backup.Calls), 1)
+				assert.Equal(t, len(backup.Calls), 2)
 			}
 		})
 	}

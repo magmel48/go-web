@@ -39,7 +39,7 @@ func (fb *FileBackup) ReadAll() map[string]string {
 	scanner.Split(bufio.ScanLines)
 
 	for scanner.Scan() {
-		ln := strings.Split(scanner.Text(), linksDelimiter)
+		ln := strings.Split(scanner.Text(), delimiter)
 
 		if len(ln) > 1 {
 			result[ln[0]] = ln[1]

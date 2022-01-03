@@ -1,6 +1,7 @@
 package shortener
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/magmel48/go-web/internal/auth"
@@ -8,7 +9,7 @@ import (
 	"net/url"
 )
 
-var linksDelimiter = "|"
+var delimiter = "|"
 
 // Shortener makes links shorter.
 type Shortener struct {
@@ -32,7 +33,7 @@ func NewShortener(prefix string, store Backup) Shortener {
 		backup:    store,
 	}
 
-	shortener.retrieveStoredLinks()
+	shortener.retrieveStoredData()
 
 	return shortener
 }
@@ -71,6 +72,7 @@ func (s Shortener) MakeShorter(link string, userID auth.UserID) (string, error) 
 
 		if !found {
 			s.userLinks[userID.String()] = append(s.userLinks[userID.String()], linkID)
+			s.storeUserLinkData(userID)
 		}
 	}
 
@@ -109,7 +111,7 @@ func (s Shortener) GetUserLinks(userID auth.UserID) []UrlsMap {
 }
 
 func (s Shortener) storeLink(link string, linkID string) {
-	record := fmt.Sprintf("%s%s%s\n", link, linksDelimiter, linkID)
+	record := fmt.Sprintf("%s%s%s\n", link, delimiter, linkID)
 	err := s.backup.Append(record)
 
 	if err != nil {
@@ -117,9 +119,36 @@ func (s Shortener) storeLink(link string, linkID string) {
 	}
 }
 
-func (s Shortener) retrieveStoredLinks() {
-	links := s.backup.ReadAll()
-	for k, v := range links {
-		s.links[k] = v
+func (s Shortener) retrieveStoredData() {
+	data := s.backup.ReadAll()
+
+	for k, v := range data {
+		_, err := url.ParseRequestURI(k)
+
+		if err != nil {
+			IDs := make([]string, 0)
+			err := json.Unmarshal([]byte(v), &IDs)
+			if err != nil {
+				log.Println("user links unmarshal error", err)
+			}
+
+			s.userLinks[k] = IDs
+		} else {
+			s.links[k] = v
+		}
+	}
+
+	log.Println("restored", s.links, s.userLinks)
+}
+
+func (s Shortener) storeUserLinkData(userID auth.UserID) {
+	marshaledIDs, _ := json.Marshal(s.userLinks[userID.String()])
+
+	record := fmt.Sprintf(
+		"%s%s%s\n", userID.String(), delimiter,  string(marshaledIDs))
+	err := s.backup.Append(record)
+
+	if err != nil {
+		log.Printf("not able to store data for user %s", userID.String())
 	}
 }

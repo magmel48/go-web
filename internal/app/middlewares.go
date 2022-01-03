@@ -46,6 +46,10 @@ func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fas
 					cookie.SetHTTPOnly(true)
 
 					ctx.Response.Header.SetCookie(&cookie)
+
+					// in case of first user request we also need to set request cookie here
+					// to be able to get it further
+					ctx.Request.Header.SetCookie(string(cookie.Key()), string(cookie.Value()))
 				}
 			}
 
