@@ -19,8 +19,8 @@ type Shortener struct {
 }
 
 type UrlsMap struct {
-	ShortUrl    string `json:"short_url"`
-	OriginalUrl string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
 // NewShortener creates new shortener.
@@ -97,7 +97,7 @@ func (s Shortener) GetUserLinks(userID auth.UserID) []UrlsMap {
 
 		for i, linkID := range userLinks {
 			longLink, _ := s.RestoreLong(linkID)
-			result[i] = UrlsMap{ShortUrl: fmt.Sprintf("%s/%s", s.prefix, linkID), OriginalUrl: longLink}
+			result[i] = UrlsMap{ShortURL: fmt.Sprintf("%s/%s", s.prefix, linkID), OriginalURL: longLink}
 		}
 
 		return result

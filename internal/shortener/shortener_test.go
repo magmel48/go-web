@@ -195,7 +195,7 @@ func TestShortener_GetUserLinks(t *testing.T) {
 				},
 			},
 			args:    args{userID: userID},
-			want:    []UrlsMap{{ShortUrl: "http://localhost:8080/1", OriginalUrl: "https://google.com"}},
+			want:    []UrlsMap{{ShortURL: "http://localhost:8080/1", OriginalURL: "https://google.com"}},
 		},
 	}
 
