@@ -2,9 +2,10 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/buaazp/fasthttprouter"
+	fasthttprouter "github.com/fasthttp/router"
 	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/config"
+	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"os"
@@ -49,18 +50,9 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router := fasthttprouter.New()
 	router.POST("/", app.handlePost)
 	router.POST("/api/shorten", app.handleJSONPost)
-	router.GET("/:id", app.handleGet)
-
-	// hack to resolve the problem from https://github.com/buaazp/fasthttprouter#named-parameters *Note* section
-	router.NotFound = func(ctx *fasthttp.RequestCtx) {
-		switch string(ctx.Path()) {
-		case "/user/urls":
-			app.handleUserGet(ctx)
-			return
-		}
-
-		ctx.NotFound()
-	}
+	router.GET("/{id:[0-9]+}", app.handleGet)
+	router.GET("/user/urls", app.handleUserGet)
+	router.GET("/ping", app.handlePing)
 
 	return cookiesHandler(app.authenticator)(
 		decompressHandler( // only for reading request
@@ -154,4 +146,12 @@ func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
 		ctx.SetContentType("application/json; charset=utf-8")
 		ctx.SetBody(response)
 	}
+}
+
+func (app App) handlePing(ctx *fasthttp.RequestCtx) {
+	if !db.CheckConnection() {
+		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
+	}
+
+	return
 }

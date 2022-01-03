@@ -14,6 +14,7 @@ var (
 	BaseShortenerURL string
 	FilePath         string
 	SecretKey		 string
+	DatabaseDSN		 string
 )
 
 // Parse parses flags and gets default values for them from environment variables. Hides details of envs ingestion.
@@ -22,6 +23,7 @@ func Parse() {
 	flag.StringVar(&BaseShortenerURL, "b", os.Getenv("BASE_URL"), "base url for shortened urls")
 	flag.StringVar(&FilePath, "f", os.Getenv("FILE_STORAGE_PATH"), "file path for shortened links")
 	flag.StringVar(&SecretKey, "s", os.Getenv("SECRET_KEY"), "secret key for sessions")
+	flag.StringVar(&DatabaseDSN, "d", os.Getenv("DATABASE_DSN"), "database connection string")
 	flag.Parse()
 
 	if Address == "" {
