@@ -6,6 +6,7 @@ import (
 	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"reflect"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 	type fields struct {
 		prefix    string
 		links     map[string]string
-		userLinks map[auth.UserID][]string
+		userLinks map[string][]string
 		backup    Backup
 	}
 	type args struct {
@@ -34,7 +35,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 			fields: fields{
 				prefix:    "http://localhost:8080",
 				links:     make(map[string]string),
-				userLinks: make(map[auth.UserID][]string),
+				userLinks: make(map[string][]string),
 				backup:    backup,
 			},
 			args: args{url: "https://google.com"},
@@ -70,9 +71,6 @@ func TestShortener_RestoreLong(t *testing.T) {
 		id string
 	}
 
-	happyPathMap := make(map[string]string)
-	happyPathMap["https://google.com"] = "1"
-
 	backup := &mocks.Backup{}
 
 	tests := []struct {
@@ -84,7 +82,13 @@ func TestShortener_RestoreLong(t *testing.T) {
 	}{
 		{
 			name:    "happy path",
-			fields:  fields{prefix: "http://localhost:8080", links: happyPathMap, backup: backup},
+			fields:  fields{
+				prefix: "http://localhost:8080",
+				links: map[string]string{
+					"https://google.com": "1",
+				},
+				backup: backup,
+			},
 			args:    args{id: "1"},
 			want:    "https://google.com",
 			wantErr: false,
@@ -156,6 +160,56 @@ func TestShortener_storeLink(t *testing.T) {
 			s.storeLink(tt.args.link, tt.args.id)
 
 			assert.Equal(t, fmt.Sprintf("%s|%s\n", tt.args.link, tt.args.id), backup.Calls[0].Arguments[0])
+		})
+	}
+}
+
+func TestShortener_GetUserLinks(t *testing.T) {
+	type fields struct {
+		prefix    string
+		links     map[string]string
+		userLinks map[string][]string
+		backup    Backup
+	}
+	type args struct {
+		userID auth.UserID
+	}
+
+	userID := auth.NewUserID()
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []UrlsMap
+	}{
+		{
+			name:    "happy path",
+			fields:  fields{
+				prefix: "http://localhost:8080",
+				links: map[string]string{
+					"https://google.com": "1",
+				},
+				userLinks: map[string][]string{
+					userID.String(): {"1"},
+				},
+			},
+			args:    args{userID: userID},
+			want:    []UrlsMap{{ShortUrl: "http://localhost:8080/1", OriginalUrl: "https://google.com"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Shortener{
+				prefix:    tt.fields.prefix,
+				links:     tt.fields.links,
+				userLinks: tt.fields.userLinks,
+				backup:    tt.fields.backup,
+			}
+			if got := s.GetUserLinks(tt.args.userID); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetUserLinks() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

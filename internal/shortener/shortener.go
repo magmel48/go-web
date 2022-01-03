@@ -14,7 +14,7 @@ var linksDelimiter = "|"
 type Shortener struct {
 	prefix    string
 	links     map[string]string
-	userLinks map[auth.UserID][]string
+	userLinks map[string][]string
 	backup    Backup
 }
 
@@ -28,7 +28,7 @@ func NewShortener(prefix string, store Backup) Shortener {
 	shortener := Shortener{
 		prefix:    prefix,
 		links:     make(map[string]string),
-		userLinks: make(map[auth.UserID][]string),
+		userLinks: make(map[string][]string),
 		backup:    store,
 	}
 
@@ -57,12 +57,12 @@ func (s Shortener) MakeShorter(link string, userID auth.UserID) (string, error) 
 
 	// store the link for the userID if needed
 	if userID != nil {
-		if _, ok := s.userLinks[userID]; !ok {
-			s.userLinks[userID] = make([]string, 0)
+		if _, ok := s.userLinks[userID.String()]; !ok {
+			s.userLinks[userID.String()] = make([]string, 0)
 		}
 
 		found := false
-		for _, el := range s.userLinks[userID] {
+		for _, el := range s.userLinks[userID.String()] {
 			if el == linkID {
 				found = true
 				break
@@ -70,7 +70,7 @@ func (s Shortener) MakeShorter(link string, userID auth.UserID) (string, error) 
 		}
 
 		if !found {
-			s.userLinks[userID] = append(s.userLinks[userID], linkID)
+			s.userLinks[userID.String()] = append(s.userLinks[userID.String()], linkID)
 		}
 	}
 
@@ -90,14 +90,14 @@ func (s Shortener) RestoreLong(linkID string) (string, error) {
 
 // GetUserLinks returns all links belongs to specified userID.
 func (s Shortener) GetUserLinks(userID auth.UserID) []UrlsMap {
-	if userLinks, ok := s.userLinks[userID]; !ok {
+	if userLinks, ok := s.userLinks[userID.String()]; !ok {
 		return nil
 	} else {
 		result := make([]UrlsMap, len(userLinks))
 
-		for i, shortLink := range userLinks {
-			longLink, _ := s.RestoreLong(shortLink)
-			result[i] = UrlsMap{ShortUrl: shortLink, OriginalUrl: longLink}
+		for i, linkID := range userLinks {
+			longLink, _ := s.RestoreLong(linkID)
+			result[i] = UrlsMap{ShortUrl: fmt.Sprintf("%s/%s", s.prefix, linkID), OriginalUrl: longLink}
 		}
 
 		return result

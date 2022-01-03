@@ -30,13 +30,13 @@ func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fas
 	return func(h fasthttp.RequestHandler) fasthttp.RequestHandler {
 		return func(ctx *fasthttp.RequestCtx) {
 			if authenticator != nil {
-				userID, err := getUserID(ctx, authenticator)
+				_, err := getUserID(ctx, authenticator)
 
 				// sets cookie if it's not valid (empty or wrong encoded)
 				if err != nil {
 					log.Println("user session invalidation error", err)
 
-					userID = auth.NewUserID()
+					userID := auth.NewUserID()
 					userToken, _ := authenticator.Encode(userID)
 
 					cookie := fasthttp.Cookie{}
@@ -53,7 +53,6 @@ func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fas
 }
 
 func getUserID(ctx *fasthttp.RequestCtx, authenticator auth.Auth) (auth.UserID, error) {
-	// FIXME authenticator null?
 	sessionCookie := ctx.Request.Header.Cookie("session")
 	return authenticator.Decode(sessionCookie)
 }
