@@ -8,6 +8,7 @@ import (
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"github.com/vardius/gorouter/v4"
+	"github.com/vardius/gorouter/v4/context"
 	"os"
 )
 
@@ -50,9 +51,9 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router := gorouter.NewFastHTTPRouter()
 	router.POST("/", app.handlePost)
 	router.POST("/api/shorten", app.handleJSONPost)
-	router.GET("/{id:[0-9]+}", app.handleGet)
 	router.GET("/user/urls", app.handleUserGet)
 	router.GET("/ping", app.handlePing)
+	router.GET("/{id}", app.handleGet)
 
 	return cookiesHandler(app.authenticator)(
 		decompressHandler( // only for reading request
@@ -113,21 +114,17 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
-	rawID := ctx.UserValue("id")
+	params := ctx.UserValue("params").(context.Params)
+	id := params.Value("id")
 
-	switch id := rawID.(type) {
-	case string:
-		initialURL, err := app.shortener.RestoreLong(id)
-		if err != nil {
-			ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
-			return
-		}
-
-		ctx.Response.Header.Set("Location", initialURL)
-		ctx.SetStatusCode(fasthttp.StatusTemporaryRedirect)
-	default:
-		ctx.Error("wrong id param", fasthttp.StatusBadRequest)
+	initialURL, err := app.shortener.RestoreLong(id)
+	if err != nil {
+		ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
+		return
 	}
+
+	ctx.Response.Header.Set("Location", initialURL)
+	ctx.SetStatusCode(fasthttp.StatusTemporaryRedirect)
 }
 
 func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
