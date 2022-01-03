@@ -42,6 +42,8 @@ func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fas
 					cookie := fasthttp.Cookie{}
 					cookie.SetKey("session")
 					cookie.SetValue(string(userToken))
+					cookie.SetPath("/")
+					cookie.SetHTTPOnly(true)
 
 					ctx.Response.Header.SetCookie(&cookie)
 				}

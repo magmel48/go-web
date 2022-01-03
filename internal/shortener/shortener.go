@@ -90,6 +90,10 @@ func (s Shortener) RestoreLong(linkID string) (string, error) {
 
 // GetUserLinks returns all links belongs to specified userID.
 func (s Shortener) GetUserLinks(userID auth.UserID) []UrlsMap {
+	if userID == nil {
+		return nil
+	}
+
 	if userLinks, ok := s.userLinks[userID.String()]; !ok {
 		return nil
 	} else {
