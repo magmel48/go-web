@@ -56,7 +56,7 @@ func TestCustomAuth_Decode(t *testing.T) {
 				77, 106, 90, 107, 77, 87, 70, 106, 77, 106, 69, 116, 78, 84, 100, 107, 78, 83, 48, 48, 77, 50, 74, 104,
 				76, 87, 73, 121, 90, 106, 99, 116, 77, 68, 104, 107, 77, 122, 89, 122, 77, 84, 66, 104, 89, 84, 65, 51,
 				65, 81}},
-			want:    id,
+			want:    &id,
 			wantErr: false,
 		},
 	}
@@ -100,7 +100,7 @@ func TestCustomAuth_Encode(t *testing.T) {
 		{
 			name:   "happy path",
 			fields: fields{algo: TestAEAD{}, NonceFunc: func(_ int) ([]byte, error) { return []byte{1}, nil }},
-			args:   args{id: id},
+			args:   args{id: &id},
 			want: []byte{
 				77, 106, 90, 107, 77, 87, 70, 106, 77, 106, 69, 116, 78, 84, 100, 107, 78, 83, 48, 48, 77, 50, 74, 104,
 				76, 87, 73, 121, 90, 106, 99, 116, 77, 68, 104, 107, 77, 122, 89, 122, 77, 84, 66, 104, 89, 84, 65, 51,

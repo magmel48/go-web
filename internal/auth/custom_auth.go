@@ -35,14 +35,14 @@ func NewCustomAuth() (*CustomAuth, error) {
 // and returns user identifier if the input sequence is valid.
 func (auth CustomAuth) Decode(sequence []byte) (UserID, error) {
 	if len(sequence) == 0 {
-		return uuid.New(), errors.New("wrong bytes sequence")
+		return nil, errors.New("wrong bytes sequence")
 	}
 
 	encoded := make([]byte, base64.RawStdEncoding.DecodedLen(len(sequence)))
 
 	_, err := base64.RawStdEncoding.Decode(encoded, sequence)
 	if err != nil {
-		return uuid.New(), err
+		return nil, err
 	}
 
 	encrypted := encoded[:len(encoded) - auth.algo.NonceSize()]
@@ -50,15 +50,15 @@ func (auth CustomAuth) Decode(sequence []byte) (UserID, error) {
 
 	decrypted, err := auth.algo.Open(nil, nonce, encrypted, nil)
 	if err != nil {
-		return uuid.New(), nil
+		return nil, err
 	}
 
 	id, err := uuid.Parse(string(decrypted))
 	if err != nil {
-		return uuid.New(), nil
+		return nil, err
 	}
 
-	return id, nil
+	return &id, nil
 }
 
 // Encode encodes user identifier and puts iv into the end of result for further decoding.

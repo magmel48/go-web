@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +54,8 @@ func acquireRequest(method string, url string, body string, headers map[string]s
 
 func TestApp_handlePost(t *testing.T) {
 	type fields struct {
-		shortener shortener.Shortener
+		shortener     shortener.Shortener
+		authenticator auth.Auth
 	}
 	type args struct {
 		w *fasthttp.Response
@@ -130,7 +132,8 @@ func TestApp_handlePost(t *testing.T) {
 
 func TestApp_handleJSONPost(t *testing.T) {
 	type fields struct {
-		shortener shortener.Shortener
+		shortener     shortener.Shortener
+		authenticator auth.Auth
 	}
 	type args struct {
 		w *fasthttp.Response
@@ -219,7 +222,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 
 func TestApp_handleGet(t *testing.T) {
 	type fields struct {
-		shortener shortener.Shortener
+		shortener     shortener.Shortener
+		authenticator auth.Auth
 	}
 	type args struct {
 		w *fasthttp.Response

@@ -3,6 +3,7 @@ package shortener
 import (
 	"errors"
 	"fmt"
+	"github.com/magmel48/go-web/internal/auth"
 	"log"
 	"net/url"
 )
@@ -11,9 +12,10 @@ var linksDelimiter = "|"
 
 // Shortener makes links shorter.
 type Shortener struct {
-	prefix string
-	links  map[string]string
-	backup Backup
+	prefix    string
+	links     map[string]string
+	userLinks map[auth.UserID][]string
+	backup    Backup
 }
 
 type UrlsMap struct {
@@ -24,9 +26,10 @@ type UrlsMap struct {
 // NewShortener creates new shortener.
 func NewShortener(prefix string, store Backup) Shortener {
 	shortener := Shortener{
-		prefix: prefix,
-		links:  make(map[string]string),
-		backup: store,
+		prefix:    prefix,
+		links:     make(map[string]string),
+		userLinks: make(map[auth.UserID][]string),
+		backup:    store,
 	}
 
 	shortener.retrieveStoredLinks()
@@ -35,30 +38,47 @@ func NewShortener(prefix string, store Backup) Shortener {
 }
 
 // MakeShorter makes a link shorter.
-func (s Shortener) MakeShorter(link string) (string, error) {
+func (s Shortener) MakeShorter(link string, userID auth.UserID) (string, error) {
 	_, err := url.ParseRequestURI(link)
 	if err != nil {
 		return "", errors.New("cannot parse url")
 	}
 
-	id := ""
-
+	// retrieve short link identifier
+	linkID := ""
 	if storedLink, ok := s.links[link]; ok {
-		id = storedLink
+		linkID = storedLink
 	} else {
-		id = fmt.Sprintf("%d", len(s.links)+1)
-		s.links[link] = id
+		linkID = fmt.Sprintf("%d", len(s.links)+1)
 
-		s.storeLink(link, id)
+		s.links[link] = linkID
+		s.storeLink(link, linkID)
 	}
 
-	return fmt.Sprintf("%s/%s", s.prefix, id), nil
+	// store the link for the userID if needed
+	if _, ok := s.userLinks[userID]; !ok {
+		s.userLinks[userID] = make([]string, 0)
+	}
+
+	found := false
+	for _, el := range s.userLinks[userID] {
+		if el == linkID {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		s.userLinks[userID] = append(s.userLinks[userID], linkID)
+	}
+
+	return fmt.Sprintf("%s/%s", s.prefix, linkID), nil
 }
 
 // RestoreLong restores short link to initial state if an info was stored before.
-func (s Shortener) RestoreLong(id string) (string, error) {
+func (s Shortener) RestoreLong(linkID string) (string, error) {
 	for k, v := range s.links {
-		if v == id {
+		if v == linkID {
 			return k, nil
 		}
 	}
@@ -66,8 +86,24 @@ func (s Shortener) RestoreLong(id string) (string, error) {
 	return "", errors.New("not found")
 }
 
-func (s Shortener) storeLink(link string, id string) {
-	record := fmt.Sprintf("%s%s%s\n", link, linksDelimiter, id)
+// GetUserLinks returns all links belongs to specified userID.
+func (s Shortener) GetUserLinks(userID auth.UserID) []UrlsMap {
+	if userLinks, ok := s.userLinks[userID]; !ok {
+		return nil
+	} else {
+		result := make([]UrlsMap, len(userLinks))
+
+		for i, shortLink := range userLinks {
+			longLink, _ := s.RestoreLong(shortLink)
+			result[i] = UrlsMap{ShortUrl: shortLink, OriginalUrl: longLink}
+		}
+
+		return result
+	}
+}
+
+func (s Shortener) storeLink(link string, linkID string) {
+	record := fmt.Sprintf("%s%s%s\n", link, linksDelimiter, linkID)
 	err := s.backup.Append(record)
 
 	if err != nil {

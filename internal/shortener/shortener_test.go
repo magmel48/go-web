@@ -2,6 +2,7 @@ package shortener
 
 import (
 	"fmt"
+	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -43,7 +44,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 				backup: backup,
 			}
 
-			if got, err := s.MakeShorter(tt.args.url); got != tt.want || err != nil {
+			if got, err := s.MakeShorter(tt.args.url, auth.NewUserID()); got != tt.want || err != nil {
 				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
 			} else {
 				assert.Equal(t, len(backup.Calls), 1)

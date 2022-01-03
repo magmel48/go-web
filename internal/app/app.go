@@ -7,8 +7,6 @@ import (
 	"github.com/magmel48/go-web/internal/config"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
-	"log"
-	"net/http"
 	"os"
 )
 
@@ -18,13 +16,13 @@ type App struct {
 	authenticator auth.Auth
 }
 
-// Payload represents payload of request to /api/shorten.
-type Payload struct {
+// ShortenPayload represents payload of request to /api/shorten.
+type ShortenPayload struct {
 	URL string `json:"url"`
 }
 
-// Result represents response from /api/shorten.
-type Result struct {
+// ShortenResult represents response from /api/shorten.
+type ShortenResult struct {
 	Result string `json:"result"`
 }
 
@@ -70,60 +68,15 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 				router.Handler, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
 }
 
-// decompressHandler reads compressed request payload and decodes it.
-func decompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler {
-	return func(ctx *fasthttp.RequestCtx) {
-		contentEncoding := ctx.Request.Header.Peek("Content-Encoding")
-		switch string(contentEncoding) {
-		case "gzip":
-			body, err := ctx.Request.BodyGunzip()
-			if err != nil {
-				ctx.Error(err.Error(), fasthttp.StatusBadRequest)
-				return
-			}
-
-			ctx.Request.SetBody(body)
-		}
-
-		h(ctx)
-	}
-}
-
-// cookiesHandler sets and validates proper cookies.
-func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fasthttp.RequestHandler {
-	return func(h fasthttp.RequestHandler) fasthttp.RequestHandler {
-		return func(ctx *fasthttp.RequestCtx) {
-			if authenticator != nil {
-				sessionCookie := ctx.Request.Header.Cookie("session")
-				_, err := authenticator.Decode(sessionCookie)
-
-				// sets cookie if it's not valid (empty or wrong encoded)
-				if err != nil {
-					log.Println("user session invalidation error", err)
-
-					userToken, _ := authenticator.Encode(auth.NewUserID())
-
-					cookie := fasthttp.Cookie{}
-					cookie.SetKey("session")
-					cookie.SetValue(string(userToken))
-
-					ctx.Response.Header.SetCookie(&cookie)
-				}
-			}
-
-			h(ctx)
-		}
-	}
-}
-
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 	if ctx.Request.Body() == nil {
 		ctx.Error("empty request body", fasthttp.StatusBadRequest)
 		return
 	}
 
+	userID, _ := getUserID(ctx, app.authenticator)
 	body := string(ctx.Request.Body())
-	shortURL, err := app.shortener.MakeShorter(body)
+	shortURL, err := app.shortener.MakeShorter(body, userID)
 
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
@@ -136,7 +89,7 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
-	var payload Payload
+	var payload ShortenPayload
 
 	body := ctx.Request.Body()
 	err := json.Unmarshal(body, &payload)
@@ -145,13 +98,14 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	shortURL, err := app.shortener.MakeShorter(payload.URL)
+	userID, _ := getUserID(ctx, app.authenticator)
+	shortURL, err := app.shortener.MakeShorter(payload.URL, userID)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		return
 	}
 
-	result := Result{
+	result := ShortenResult{
 		Result: shortURL,
 	}
 
@@ -178,12 +132,19 @@ func (app App) handleGet(ctx *fasthttp.RequestCtx) {
 		}
 
 		ctx.Response.Header.Set("Location", initialURL)
-		ctx.SetStatusCode(http.StatusTemporaryRedirect)
+		ctx.SetStatusCode(fasthttp.StatusTemporaryRedirect)
 	default:
-		ctx.Error("wrong id param", http.StatusBadRequest)
+		ctx.Error("wrong id param", fasthttp.StatusBadRequest)
 	}
 }
 
 func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
-	// TODO
+	userID, _ := getUserID(ctx, app.authenticator)
+	urlsMap := app.shortener.GetUserLinks(userID)
+
+	if len(urlsMap) == 0 {
+		ctx.SetStatusCode(fasthttp.StatusNoContent)
+	} else {
+		// FIXME marshal and return
+	}
 }
