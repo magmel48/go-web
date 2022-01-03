@@ -13,15 +13,15 @@ type Auth struct {
 }
 
 // Decode provides a mock function with given fields: sequence
-func (_m *Auth) Decode(sequence []byte) (uuid.UUID, error) {
+func (_m *Auth) Decode(sequence []byte) (*uuid.UUID, error) {
 	ret := _m.Called(sequence)
 
-	var r0 uuid.UUID
-	if rf, ok := ret.Get(0).(func([]byte) uuid.UUID); ok {
+	var r0 *uuid.UUID
+	if rf, ok := ret.Get(0).(func([]byte) *uuid.UUID); ok {
 		r0 = rf(sequence)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
+			r0 = ret.Get(0).(*uuid.UUID)
 		}
 	}
 
@@ -36,11 +36,11 @@ func (_m *Auth) Decode(sequence []byte) (uuid.UUID, error) {
 }
 
 // Encode provides a mock function with given fields: id
-func (_m *Auth) Encode(id uuid.UUID) ([]byte, error) {
+func (_m *Auth) Encode(id *uuid.UUID) ([]byte, error) {
 	ret := _m.Called(id)
 
 	var r0 []byte
-	if rf, ok := ret.Get(0).(func(uuid.UUID) []byte); ok {
+	if rf, ok := ret.Get(0).(func(*uuid.UUID) []byte); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
@@ -49,7 +49,7 @@ func (_m *Auth) Encode(id uuid.UUID) ([]byte, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(uuid.UUID) error); ok {
+	if rf, ok := ret.Get(1).(func(*uuid.UUID) error); ok {
 		r1 = rf(id)
 	} else {
 		r1 = ret.Error(1)

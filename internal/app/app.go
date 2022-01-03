@@ -140,11 +140,18 @@ func (app App) handleGet(ctx *fasthttp.RequestCtx) {
 
 func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
 	userID, _ := getUserID(ctx, app.authenticator)
-	urlsMap := app.shortener.GetUserLinks(userID)
+	result := app.shortener.GetUserLinks(userID)
 
-	if len(urlsMap) == 0 {
+	if len(result) == 0 {
 		ctx.SetStatusCode(fasthttp.StatusNoContent)
 	} else {
-		// FIXME marshal and return
+		response, err := json.Marshal(result)
+		if err != nil {
+			ctx.Error("json marshal error", fasthttp.StatusBadRequest)
+			return
+		}
+
+		ctx.SetContentType("application/json; charset=utf-8")
+		ctx.SetBody(response)
 	}
 }

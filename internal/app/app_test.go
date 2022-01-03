@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"github.com/magmel48/go-web/internal/auth"
+	mocks2 "github.com/magmel48/go-web/internal/auth/mocks"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
@@ -71,6 +72,10 @@ func TestApp_handlePost(t *testing.T) {
 	mockBackup.On("ReadAll").Return(make(map[string]string))
 	mockBackup.On("Append", mock.AnythingOfType("string")).Return(nil)
 
+	mockAuth := &mocks2.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080", "test", emptyHeaders)
 	okURLInBodyRequest := acquireRequest(
@@ -85,7 +90,8 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockBackup),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -97,8 +103,11 @@ func TestApp_handlePost(t *testing.T) {
 			},
 		},
 		{
-			name:   "happy path",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080", mockBackup)},
+			name: "happy path",
+			fields: fields{
+				shortener:     shortener.NewShortener("http://localhost:8080", mockBackup),
+				authenticator: mockAuth,
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: okURLInBodyRequest,
@@ -114,7 +123,8 @@ func TestApp_handlePost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := App{
-				shortener: tt.fields.shortener,
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
 			}
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
@@ -142,18 +152,22 @@ func TestApp_handleJSONPost(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
-		result      Result
+		result      ShortenResult
 	}
 
 	mockBackup := &mocks.Backup{}
 	mockBackup.On("ReadAll").Return(make(map[string]string))
 	mockBackup.On("Append", mock.AnythingOfType("string")).Return(nil)
 
+	mockAuth := &mocks2.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
 
 	malformedBody, _ := json.Marshal("[1,2,3]")
-	okBody, _ := json.Marshal(Payload{URL: "https://google.com"})
+	okBody, _ := json.Marshal(ShortenPayload{URL: "https://google.com"})
 
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080/api/shorten", string(malformedBody), headers)
@@ -169,7 +183,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockBackup),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -183,7 +198,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockBackup),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -192,7 +208,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 			want: want{
 				contentType: "application/json; charset=utf-8",
 				statusCode:  fasthttp.StatusCreated,
-				result:      Result{Result: "http://localhost:8080/1"},
+				result:      ShortenResult{Result: "http://localhost:8080/1"},
 			},
 		},
 	}
@@ -200,7 +216,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := App{
-				shortener: tt.fields.shortener,
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
 			}
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
@@ -210,7 +227,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
 
 			if tt.args.w.StatusCode() == fasthttp.StatusCreated {
-				var result Result
+				var result ShortenResult
 
 				err = json.Unmarshal(tt.args.w.Body(), &result)
 				assert.NoError(t, err, "unmarshal response error")
@@ -238,6 +255,10 @@ func TestApp_handleGet(t *testing.T) {
 	mockBackup := &mocks.Backup{}
 	mockBackup.On("ReadAll").Return(make(map[string]string))
 
+	mockAuth := &mocks2.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
 	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/1", "", emptyHeaders)
 
 	tests := []struct {
@@ -249,7 +270,8 @@ func TestApp_handleGet(t *testing.T) {
 		{
 			name: "no url found for fresh db in shortener",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockBackup),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -265,7 +287,8 @@ func TestApp_handleGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := App{
-				shortener: tt.fields.shortener,
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
 			}
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)

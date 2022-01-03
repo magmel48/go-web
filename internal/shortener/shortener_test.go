@@ -11,9 +11,10 @@ import (
 
 func TestShortener_MakeShorter(t *testing.T) {
 	type fields struct {
-		prefix string
-		links  map[string]string
-		backup Backup
+		prefix    string
+		links     map[string]string
+		userLinks map[auth.UserID][]string
+		backup    Backup
 	}
 	type args struct {
 		url string
@@ -29,19 +30,25 @@ func TestShortener_MakeShorter(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "happy path",
-			fields: fields{prefix: "http://localhost:8080", links: make(map[string]string), backup: backup},
-			args:   args{url: "https://google.com"},
-			want:   "http://localhost:8080/1",
+			name: "happy path",
+			fields: fields{
+				prefix:    "http://localhost:8080",
+				links:     make(map[string]string),
+				userLinks: make(map[auth.UserID][]string),
+				backup:    backup,
+			},
+			args: args{url: "https://google.com"},
+			want: "http://localhost:8080/1",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Shortener{
-				prefix: tt.fields.prefix,
-				links:  tt.fields.links,
-				backup: backup,
+				prefix:    tt.fields.prefix,
+				links:     tt.fields.links,
+				userLinks: tt.fields.userLinks,
+				backup:    backup,
 			}
 
 			if got, err := s.MakeShorter(tt.args.url, auth.NewUserID()); got != tt.want || err != nil {

@@ -56,20 +56,22 @@ func (s Shortener) MakeShorter(link string, userID auth.UserID) (string, error) 
 	}
 
 	// store the link for the userID if needed
-	if _, ok := s.userLinks[userID]; !ok {
-		s.userLinks[userID] = make([]string, 0)
-	}
-
-	found := false
-	for _, el := range s.userLinks[userID] {
-		if el == linkID {
-			found = true
-			break
+	if userID != nil {
+		if _, ok := s.userLinks[userID]; !ok {
+			s.userLinks[userID] = make([]string, 0)
 		}
-	}
 
-	if !found {
-		s.userLinks[userID] = append(s.userLinks[userID], linkID)
+		found := false
+		for _, el := range s.userLinks[userID] {
+			if el == linkID {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			s.userLinks[userID] = append(s.userLinks[userID], linkID)
+		}
 	}
 
 	return fmt.Sprintf("%s/%s", s.prefix, linkID), nil
