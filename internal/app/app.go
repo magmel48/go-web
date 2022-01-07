@@ -150,6 +150,8 @@ func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	ctx.SetContentType("application/json; charset=utf-8")
+	ctx.SetStatusCode(fasthttp.StatusCreated)
 	ctx.SetBody(response)
 }
 
