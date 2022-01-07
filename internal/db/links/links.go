@@ -50,7 +50,7 @@ func FindByShortID(ctx context.Context, shortID string) (*Link, error) {
 
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		link := Link{}
 		err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL)
 		if err != nil {
@@ -72,7 +72,7 @@ func FindByOriginalURL(ctx context.Context, originalURL string) (*Link, error) {
 
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		link := Link{}
 		err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL)
 		if err != nil {

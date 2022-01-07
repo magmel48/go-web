@@ -48,7 +48,7 @@ func List(ctx context.Context, userID auth.UserID) ([]UserLink, error) {
 func FindByLinkID(ctx context.Context, userID auth.UserID, linkID int) (*UserLink, error) {
 	rows, err := db.DB.QueryContext(
 		ctx,
-		`SELECT "id", "user_id", "link_id" FROM "user_links" WHERE "user_id" = $1 AND "link_id" = $2`,
+		`SELECT "id", "user_id", "link_id" FROM "user_links" WHERE "user_id" = $1 AND "link_id" = $2 LIMIT 1`,
 		*userID,
 		linkID)
 	if err != nil {
@@ -57,7 +57,7 @@ func FindByLinkID(ctx context.Context, userID auth.UserID, linkID int) (*UserLin
 
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		userLink := UserLink{}
 		err := rows.Scan(&userLink.ID, &userLink.UserID, &userLink.LinkID)
 		if err != nil {
