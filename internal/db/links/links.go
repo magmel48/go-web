@@ -39,7 +39,7 @@ func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 	defer tx.Rollback()
 
 	insertStmt, err := tx.PrepareContext(
-		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES($1, $2) RETURNING id`)
+		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES($1, $2) RETURNING "id", "short_id"`)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 				return nil, err
 			}
 		} else {
-			if err = txInsertStmt.QueryRowContext(ctx, strconv.Itoa(linksCount + i), el).Scan(&link.ID); err != nil {
+			if err = txInsertStmt.QueryRowContext(ctx, strconv.Itoa(linksCount + i), el).Scan(&link.ID, &link.ShortID); err != nil {
 				return nil, err
 			}
 		}
@@ -77,8 +77,6 @@ func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-
-	// TODO obtain short_id for each link
 
 	return result, nil
 }
