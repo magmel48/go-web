@@ -14,31 +14,73 @@ type Link struct {
 
 func Create(ctx context.Context, shortID string, originalURL string) (*Link, error) {
 	if shortID == "" {
-		count := 0
-
-		rows, err := db.DB.QueryContext(ctx, `SELECT COUNT(*) FROM "links"`)
-		if err != nil {
-			return nil, err
-		}
-
-		defer rows.Close()
-
-		for rows.Next() {
-			rows.Scan(&count)
-			count = count + 1
-		}
-
-		shortID = strconv.Itoa(count)
+		linksCount, _ := getLinksCount(ctx)
+		shortID = strconv.Itoa(linksCount)
 	}
 
 	id := 0
-	err := db.DB.QueryRowContext(
-		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES ($1, $2) RETURNING id`, shortID, originalURL).Scan(&id)
-	if err != nil {
+	if err := db.DB.QueryRowContext(
+		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES ($1, $2) RETURNING id`, shortID, originalURL).Scan(&id); err != nil {
 		return nil, err
 	}
 
 	return &Link{ID: id, ShortID: shortID, OriginalURL: originalURL}, nil
+}
+
+func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
+	result := make([]Link, len(originalURLs))
+	linksCount, _ := getLinksCount(ctx)
+
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	defer tx.Rollback()
+
+	insertStmt, err := tx.PrepareContext(
+		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES($1, $2) RETURNING id`)
+	if err != nil {
+		return nil, err
+	}
+
+	selectStmt, err := tx.PrepareContext(
+		ctx, `SELECT "id", "short_id" FROM "links" WHERE "original_url" = $1 LIMIT 1`)
+	if err != nil {
+		return nil, err
+	}
+
+	txInsertStmt := tx.StmtContext(ctx, insertStmt)
+	txSelectStmt := tx.StmtContext(ctx, selectStmt)
+
+	for i, el := range originalURLs {
+		link := Link{}
+		rows, err := txSelectStmt.QueryContext(ctx, el)
+
+		if rows.Next() {
+			if err = rows.Scan(&link.ID, &link.ShortID); err != nil {
+				return nil, err
+			}
+		} else {
+			if err = txInsertStmt.QueryRowContext(ctx, strconv.Itoa(linksCount + i), el).Scan(&link.ID); err != nil {
+				return nil, err
+			}
+		}
+
+		result[i] = link
+
+		if err = rows.Close(); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	// TODO obtain short_id for each link
+
+	return result, nil
 }
 
 func FindByShortID(ctx context.Context, shortID string) (*Link, error) {
@@ -52,8 +94,7 @@ func FindByShortID(ctx context.Context, shortID string) (*Link, error) {
 
 	if rows.Next() {
 		link := Link{}
-		err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL)
-		if err != nil {
+		if err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL); err != nil {
 			return nil, err
 		}
 
@@ -74,8 +115,7 @@ func FindByOriginalURL(ctx context.Context, originalURL string) (*Link, error) {
 
 	if rows.Next() {
 		link := Link{}
-		err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL)
-		if err != nil {
+		if err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL); err != nil {
 			return nil, err
 		}
 
@@ -83,4 +123,25 @@ func FindByOriginalURL(ctx context.Context, originalURL string) (*Link, error) {
 	}
 
 	return nil, nil
+}
+
+func getLinksCount(ctx context.Context) (int, error) {
+	count := 0
+
+	rows, err := db.DB.QueryContext(ctx, `SELECT COUNT(*) FROM "links"`)
+	if err != nil {
+		return 0, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		if err := rows.Scan(&count); err != nil {
+			return 0, err
+		}
+
+		count = count + 1
+	}
+
+	return count, nil
 }

@@ -3,12 +3,12 @@ package db
 import "log"
 
 // CreateSchema creates initial schema if no table created before.
-func CreateSchema() {
+func CreateSchema() error {
 	if DB == nil {
 		err := Connect()
 		if err != nil {
 			log.Println("not able to connect")
-			panic(err)
+			return err
 		}
 	}
 
@@ -23,7 +23,7 @@ func CreateSchema() {
 
 	if err != nil {
 		log.Println("not able to create `links` table")
-		panic(err)
+		return err
 	}
 
 	_, err = DB.Exec(`
@@ -40,8 +40,9 @@ func CreateSchema() {
 
 	if err != nil {
 		log.Println("not able to create `user_links` table")
-		panic(err)
+		return err
 	}
 
 	log.Println("app schema was successfully restored")
+	return nil
 }

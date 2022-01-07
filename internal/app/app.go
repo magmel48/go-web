@@ -16,7 +16,7 @@ type App struct {
 	authenticator auth.Auth
 }
 
-// ShortenPayload represents payload of request to /api/shorten.
+// ShortenPayload represents payload of a request to /api/shorten.
 type ShortenPayload struct {
 	URL string `json:"url"`
 }
@@ -24,6 +24,18 @@ type ShortenPayload struct {
 // ShortenResult represents response from /api/shorten.
 type ShortenResult struct {
 	Result string `json:"result"`
+}
+
+// BatchPayloadElement is one element from array from payload of a request to /api/shorten/batch.
+type BatchPayloadElement struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+// BatchResultElement is one element from array from response from /api/shorten/batch.
+type BatchResultElement struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }
 
 // NewApp creates new app that handles requests for making url shorter.
@@ -44,6 +56,7 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router := gorouter.NewFastHTTPRouter()
 	router.POST("/", app.handlePost)
 	router.POST("/api/shorten", app.handleJSONPost)
+	router.POST("/api/shorten/batch", app.handleBatchPost)
 	router.GET("/user/urls", app.handleUserGet)
 	router.GET("/ping", app.handlePing)
 	router.GET("/{id}", app.handleGet)
@@ -103,6 +116,40 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 
 	ctx.SetContentType("application/json; charset=utf-8")
 	ctx.SetStatusCode(fasthttp.StatusCreated)
+	ctx.SetBody(response)
+}
+
+func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
+	var payload []BatchPayloadElement
+
+	body := ctx.Request.Body()
+	err := json.Unmarshal(body, &payload)
+	if err != nil {
+		ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+		return
+	}
+
+	originalURLs := make([]string, len(payload))
+	for i, el := range payload {
+		originalURLs[i] = el.OriginalURL
+	}
+
+	shortURLs, err := app.shortener.MakeShorterBatch(ctx, originalURLs)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+	}
+
+	result := make([]BatchResultElement, len(payload))
+	for i, el := range shortURLs {
+		result[i] = BatchResultElement{CorrelationID: payload[i].CorrelationID, ShortURL: el}
+	}
+
+	response, err := json.Marshal(result)
+	if err != nil {
+		ctx.Error("json marshal error", fasthttp.StatusBadRequest)
+		return
+	}
+
 	ctx.SetBody(response)
 }
 

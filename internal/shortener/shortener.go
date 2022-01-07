@@ -29,9 +29,25 @@ func NewShortener(prefix string) Shortener {
 		prefix:    prefix,
 	}
 
-	db.CreateSchema()
+	if err := db.CreateSchema(); err != nil {
+		panic(err)
+	}
 
 	return shortener
+}
+
+func (s Shortener) MakeShorterBatch(ctx context.Context, originalURLs []string) ([]string, error) {
+	linkRecords, err := links.CreateBatch(ctx, originalURLs)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]string, len(originalURLs))
+	for i, link := range linkRecords {
+		result[i] = fmt.Sprintf("%s/%s", s.prefix, link.ShortID)
+	}
+
+	return result, nil
 }
 
 // MakeShorter makes a link shorter.
@@ -58,8 +74,7 @@ func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID a
 	if userID != nil {
 		userLink, _ := userlinks.FindByLinkID(ctx, userID, link.ID)
 		if userLink == nil {
-			err = userlinks.Create(ctx, userID, link.ID)
-			if err != nil {
+			if err = userlinks.Create(ctx, userID, link.ID); err != nil {
 				return "", err
 			}
 		}
