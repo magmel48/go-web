@@ -74,7 +74,7 @@ func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 				return nil, err
 			}
 		} else {
-			if err = txInsertStmt.QueryRowContext(ctx, strconv.Itoa(linksCount + i), el).Scan(&link.ID, &link.ShortID); err != nil {
+			if err = txInsertStmt.QueryRowContext(ctx, strconv.Itoa(linksCount+i), el).Scan(&link.ID, &link.ShortID); err != nil {
 				return nil, err
 			}
 		}

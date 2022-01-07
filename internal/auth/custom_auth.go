@@ -44,8 +44,8 @@ func (auth CustomAuth) Decode(sequence []byte) (UserID, error) {
 		return nil, err
 	}
 
-	encrypted := encoded[:len(encoded) - auth.algo.NonceSize()]
-	nonce := encoded[len(encoded) - auth.algo.NonceSize():]
+	encrypted := encoded[:len(encoded)-auth.algo.NonceSize()]
+	nonce := encoded[len(encoded)-auth.algo.NonceSize():]
 
 	decrypted, err := auth.algo.Open(nil, nonce, encrypted, nil)
 	if err != nil {

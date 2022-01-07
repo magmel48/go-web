@@ -15,7 +15,7 @@ var delimiter = "|"
 
 // Shortener makes links shorter.
 type Shortener struct {
-	prefix    string
+	prefix string
 }
 
 type UrlsMap struct {
@@ -26,7 +26,7 @@ type UrlsMap struct {
 // NewShortener creates new shortener.
 func NewShortener(prefix string) Shortener {
 	shortener := Shortener{
-		prefix:    prefix,
+		prefix: prefix,
 	}
 
 	if err := db.CreateSchema(); err != nil {
@@ -103,7 +103,7 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 	result := make([]UrlsMap, len(userLinksList))
 	for i, userLink := range userLinksList {
 		result[i] = UrlsMap{
-			ShortURL: fmt.Sprintf("%s/%s", s.prefix, userLink.Link.ShortID),
+			ShortURL:    fmt.Sprintf("%s/%s", s.prefix, userLink.Link.ShortID),
 			OriginalURL: userLink.Link.OriginalURL,
 		}
 	}

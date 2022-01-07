@@ -13,8 +13,8 @@ var (
 	AppDomain        string
 	BaseShortenerURL string
 	FilePath         string
-	SecretKey		 string
-	DatabaseDSN		 string
+	SecretKey        string
+	DatabaseDSN      string
 )
 
 // Parse parses flags and gets default values for them from environment variables. Hides details of envs ingestion.

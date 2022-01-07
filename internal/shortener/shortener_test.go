@@ -8,7 +8,7 @@ import (
 
 func TestShortener_MakeShorter(t *testing.T) {
 	type fields struct {
-		prefix    string
+		prefix string
 	}
 	type args struct {
 		url string
@@ -23,7 +23,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				prefix:    "http://localhost:8080",
+				prefix: "http://localhost:8080",
 			},
 			args: args{url: "https://google.com"},
 			want: "http://localhost:8080/1",
@@ -33,7 +33,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Shortener{
-				prefix:    tt.fields.prefix,
+				prefix: tt.fields.prefix,
 			}
 
 			if got, _, err := s.MakeShorter(context.Background(), tt.args.url, auth.NewUserID()); got != tt.want || err != nil {
@@ -60,8 +60,8 @@ func TestShortener_RestoreLong(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "happy path",
-			fields:  fields{
+			name: "happy path",
+			fields: fields{
 				prefix: "http://localhost:8080",
 				links: map[string]string{
 					"https://google.com": "1",
