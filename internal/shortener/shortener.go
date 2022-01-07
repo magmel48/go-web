@@ -11,11 +11,11 @@ import (
 	"net/url"
 )
 
-var delimiter = "|"
-
 // Shortener makes links shorter.
 type Shortener struct {
-	prefix string
+	prefix              string
+	linksRepository     links.Repository
+	userLinksRepository userlinks.Repository
 }
 
 type UrlsMap struct {
@@ -25,19 +25,21 @@ type UrlsMap struct {
 
 // NewShortener creates new shortener.
 func NewShortener(prefix string) Shortener {
-	shortener := Shortener{
-		prefix: prefix,
-	}
-
 	if err := db.CreateSchema(); err != nil {
 		panic(err)
+	}
+
+	shortener := Shortener{
+		prefix: prefix,
+		linksRepository: links.NewPostgresRepository(db.DB),
+		userLinksRepository: userlinks.NewPostgresRepository(db.DB),
 	}
 
 	return shortener
 }
 
 func (s Shortener) MakeShorterBatch(ctx context.Context, originalURLs []string) ([]string, error) {
-	linkRecords, err := links.CreateBatch(ctx, originalURLs)
+	linkRecords, err := s.linksRepository.CreateBatch(ctx, originalURLs)
 	if err != nil {
 		return nil, err
 	}
@@ -57,16 +59,16 @@ func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID a
 		return "", false, errors.New("cannot parse url")
 	}
 
-	link, isDuplicated, err := links.Create(ctx, "", originalURL)
+	link, isDuplicated, err := s.linksRepository.Create(ctx, "", originalURL)
 	if err != nil {
 		return "", false, err
 	}
 
 	// store the link for the userID if needed
 	if userID != nil {
-		userLink, _ := userlinks.FindByLinkID(ctx, userID, link.ID)
+		userLink, _ := s.userLinksRepository.FindByLinkID(ctx, userID, link.ID)
 		if userLink == nil {
-			if err = userlinks.Create(ctx, userID, link.ID); err != nil {
+			if err = s.userLinksRepository.Create(ctx, userID, link.ID); err != nil {
 				return "", false, err
 			}
 		}
@@ -77,7 +79,7 @@ func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID a
 
 // RestoreLong restores short link to initial state if an info was stored before.
 func (s Shortener) RestoreLong(ctx context.Context, shortID string) (string, error) {
-	link, err := links.FindByShortID(ctx, shortID)
+	link, err := s.linksRepository.FindByShortID(ctx, shortID)
 	if err != nil {
 		return "", err
 	}
@@ -95,7 +97,7 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 		return nil, nil
 	}
 
-	userLinksList, err := userlinks.List(ctx, userID)
+	userLinksList, err := s.userLinksRepository.List(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
