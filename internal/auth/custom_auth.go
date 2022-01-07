@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"github.com/google/uuid"
 	"github.com/magmel48/go-web/internal/config"
 )
 
@@ -53,12 +52,8 @@ func (auth CustomAuth) Decode(sequence []byte) (UserID, error) {
 		return nil, err
 	}
 
-	id, err := uuid.Parse(string(decrypted))
-	if err != nil {
-		return nil, err
-	}
-
-	return &id, nil
+	result := string(decrypted)
+	return &result, nil
 }
 
 // Encode encodes user identifier and puts iv into the end of result for further decoding.
@@ -68,7 +63,7 @@ func (auth CustomAuth) Encode(id UserID) ([]byte, error) {
 		return nil, err
 	}
 
-	encrypted := auth.algo.Seal(nil, nonce, []byte(id.String()), nil)
+	encrypted := auth.algo.Seal(nil, nonce, []byte(*id), nil)
 
 	raw := append(encrypted, nonce...)
 	serialized := make([]byte, base64.RawStdEncoding.EncodedLen(len(raw)))

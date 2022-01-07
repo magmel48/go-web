@@ -8,11 +8,11 @@ import (
 type NonceFunc func(nonceSize int) ([]byte, error)
 
 // UserID hides real user id implementation.
-type UserID = *uuid.UUID
+type UserID = *string
 
 // NewUserID generates new random user identifier.
 func NewUserID() UserID {
-	id := uuid.New()
+	id := uuid.New().String()
 	return &id
 }
 

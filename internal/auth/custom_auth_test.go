@@ -2,7 +2,6 @@ package auth
 
 import (
 	"crypto/cipher"
-	"github.com/google/uuid"
 	"reflect"
 	"testing"
 )
@@ -39,8 +38,7 @@ func TestCustomAuth_Decode(t *testing.T) {
 		sequence []byte
 	}
 
-	// 29k+mLEk7s3oNVrZhpVPhTcD3zv9WsVUehf7zV4dcPyDKT8WKKITWgBTqx4SfPWbWYpw0/UeK/YVFFEOVnAokQ
-	id, _ := uuid.Parse("26d1ac21-57d5-43ba-b2f7-08d36310aa07")
+	id := "26d1ac21-57d5-43ba-b2f7-08d36310aa07"
 
 	tests := []struct {
 		name    string
@@ -88,7 +86,7 @@ func TestCustomAuth_Encode(t *testing.T) {
 		id UserID
 	}
 
-	id, _ := uuid.Parse("26d1ac21-57d5-43ba-b2f7-08d36310aa07")
+	id := "26d1ac21-57d5-43ba-b2f7-08d36310aa07"
 
 	tests := []struct {
 		name    string
