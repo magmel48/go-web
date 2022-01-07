@@ -12,19 +12,28 @@ type Link struct {
 	OriginalURL string
 }
 
-func Create(ctx context.Context, shortID string, originalURL string) (*Link, error) {
+func Create(ctx context.Context, shortID string, originalURL string) (*Link, bool, error) {
 	if shortID == "" {
 		linksCount, _ := getLinksCount(ctx)
 		shortID = strconv.Itoa(linksCount)
 	}
 
-	id := 0
+	link := Link{}
 	if err := db.DB.QueryRowContext(
-		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES ($1, $2) RETURNING id`, shortID, originalURL).Scan(&id); err != nil {
-		return nil, err
+		ctx,
+		`
+			INSERT INTO "links" ("short_id", "original_url") VALUES ($1, $2)
+			ON CONFLICT ("original_url") DO UPDATE SET "original_url" = "links"."original_url"
+			RETURNING "id", "short_id"
+		`,
+		shortID,
+		originalURL).Scan(&link.ID, &link.ShortID); err != nil {
+
+		return nil, false, err
 	}
 
-	return &Link{ID: id, ShortID: shortID, OriginalURL: originalURL}, nil
+	// shortID != link.ShortID if short_id`s are not the same
+	return &link, shortID != link.ShortID, nil
 }
 
 func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {

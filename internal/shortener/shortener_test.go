@@ -9,8 +9,6 @@ import (
 func TestShortener_MakeShorter(t *testing.T) {
 	type fields struct {
 		prefix    string
-		links     map[string]string
-		userLinks map[string][]string
 	}
 	type args struct {
 		url string
@@ -26,8 +24,6 @@ func TestShortener_MakeShorter(t *testing.T) {
 			name: "happy path",
 			fields: fields{
 				prefix:    "http://localhost:8080",
-				links:     make(map[string]string),
-				userLinks: make(map[string][]string),
 			},
 			args: args{url: "https://google.com"},
 			want: "http://localhost:8080/1",
@@ -40,7 +36,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 				prefix:    tt.fields.prefix,
 			}
 
-			if got, err := s.MakeShorter(context.Background(), tt.args.url, auth.NewUserID()); got != tt.want || err != nil {
+			if got, _, err := s.MakeShorter(context.Background(), tt.args.url, auth.NewUserID()); got != tt.want || err != nil {
 				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
 			}
 		})

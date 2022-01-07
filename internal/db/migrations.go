@@ -43,6 +43,24 @@ func CreateSchema() error {
 		return err
 	}
 
+	_, err = DB.Exec(`
+		ALTER TABLE "links" DROP CONSTRAINT IF EXISTS "unique_original_url"
+	`)
+
+	if err != nil {
+		log.Println("not able to drop constraint created before")
+		return err
+	}
+
+	_, err = DB.Exec(`
+		ALTER TABLE "links" ADD CONSTRAINT "unique_original_url" UNIQUE (original_url)
+	`)
+
+	if err != nil {
+		log.Println("not able to create constraint")
+		return err
+	}
+
 	log.Println("app schema was successfully restored")
 	return nil
 }

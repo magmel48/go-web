@@ -75,7 +75,7 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 
 	userID, _ := getUserID(ctx, app.authenticator)
 	body := string(ctx.Request.Body())
-	shortURL, err := app.shortener.MakeShorter(ctx, body, userID)
+	shortURL, isDuplicated, err := app.shortener.MakeShorter(ctx, body, userID)
 
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
@@ -83,8 +83,13 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 	}
 
 	ctx.SetContentType("text/plain; charset=utf-8")
-	ctx.SetStatusCode(fasthttp.StatusCreated)
 	ctx.SetBody([]byte(shortURL))
+
+	if isDuplicated {
+		ctx.SetStatusCode(fasthttp.StatusConflict)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusCreated)
+	}
 }
 
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
@@ -98,7 +103,7 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 	}
 
 	userID, _ := getUserID(ctx, app.authenticator)
-	shortURL, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
+	shortURL, isDuplicated, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		return
@@ -115,8 +120,13 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 	}
 
 	ctx.SetContentType("application/json; charset=utf-8")
-	ctx.SetStatusCode(fasthttp.StatusCreated)
 	ctx.SetBody(response)
+
+	if isDuplicated {
+		ctx.SetStatusCode(fasthttp.StatusConflict)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusCreated)
+	}
 }
 
 func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
