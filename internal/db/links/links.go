@@ -56,6 +56,9 @@ func CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 	for i, el := range originalURLs {
 		link := Link{}
 		rows, err := txSelectStmt.QueryContext(ctx, el)
+		if err != nil {
+			return nil, err
+		}
 
 		if rows.Next() {
 			if err = rows.Scan(&link.ID, &link.ShortID); err != nil {
