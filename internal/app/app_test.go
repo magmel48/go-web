@@ -2,10 +2,10 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/magmel48/go-web/internal/auth"
 	authmocks "github.com/magmel48/go-web/internal/auth/mocks"
 	dbmocks "github.com/magmel48/go-web/internal/db/mocks"
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -313,6 +313,63 @@ func TestApp_handleGet(t *testing.T) {
 
 			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
 			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
+		})
+	}
+}
+
+func TestApp_handlePing(t *testing.T) {
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+	type want struct {
+		statusCode int
+	}
+
+	pingRequest := acquireRequest(
+		fasthttp.MethodGet, "http://localhost:8080/ping", "", emptyHeaders)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+	mockDB.On("Instance").Return(nil)
+	mockDB.On("CheckConnection", mock.Anything).Return(false)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   want
+	}{
+		{
+			name: "returns 500 if connection is not ok",
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", mockDB),
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: pingRequest,
+			},
+			want: want{
+				statusCode: fasthttp.StatusInternalServerError,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "GET request error")
+
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
 		})
 	}
 }

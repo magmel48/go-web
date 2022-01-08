@@ -45,7 +45,7 @@ func NewApp(baseURL string) App {
 		panic(err)
 	}
 
-	database := db.SqlDB{}
+	database := db.SQLDB{}
 	if err := database.CreateSchema(); err != nil {
 		panic(err)
 	}

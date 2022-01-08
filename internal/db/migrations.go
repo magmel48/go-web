@@ -3,7 +3,7 @@ package db
 import "log"
 
 // CreateSchema creates initial schema if no table created before.
-func (db *SqlDB) CreateSchema() error {
+func (db *SQLDB) CreateSchema() error {
 	if db.instance == nil {
 		err := db.Connect()
 		if err != nil {

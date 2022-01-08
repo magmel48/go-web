@@ -17,16 +17,16 @@ type DB interface {
 	CreateSchema() error
 }
 
-// SqlDB is implementation of abstract DB.
-type SqlDB struct {
+// SQLDB is implementation of abstract DB.
+type SQLDB struct {
 	instance *sql.DB
 }
 
-func (db *SqlDB) Instance() *sql.DB {
+func (db *SQLDB) Instance() *sql.DB {
 	return db.instance
 }
 
-func (db *SqlDB) Connect() error {
+func (db *SQLDB) Connect() error {
 	if config.DatabaseDSN != "" {
 		var err error
 
@@ -37,7 +37,7 @@ func (db *SqlDB) Connect() error {
 	return nil
 }
 
-func (db *SqlDB) CheckConnection(ctx context.Context) bool {
+func (db *SQLDB) CheckConnection(ctx context.Context) bool {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	err := db.instance.PingContext(ctx)
