@@ -78,5 +78,9 @@ func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID a
 		return nil, err
 	}
 
-	return &userLink, nil
+	if userLink.ID != 0 {
+		return &userLink, nil
+	}
+
+	return nil, nil
 }

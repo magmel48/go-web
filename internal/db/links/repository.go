@@ -122,7 +122,11 @@ func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID
 		return nil, err
 	}
 
-	return &link, nil
+	if link.ID != 0 {
+		return &link, nil
+	}
+
+	return nil, nil
 }
 
 func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, error) {

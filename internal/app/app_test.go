@@ -317,6 +317,79 @@ func TestApp_handleGet(t *testing.T) {
 	}
 }
 
+func TestApp_handleUserGet(t *testing.T) {
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+	type want struct {
+		contentType string
+		statusCode  int
+		result      string
+	}
+
+	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/user/urls", "", emptyHeaders)
+
+	userID := "user_id_1"
+
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(&userID, nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"short_id", "original_url"}).AddRow("1", "https://google.com")
+	sqlMock.ExpectQuery(
+		`SELECT l."short_id", l."original_url" FROM "user_links"`).WillReturnRows(rows)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   want
+	}{
+		{
+			name: "gets all user related urls",
+			fields: fields{
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: request,
+			},
+			want: want{
+				contentType: "application/json; charset=utf-8",
+				statusCode:  fasthttp.StatusOK,
+				result:      `[{"original_url":"https://google.com", "short_url":"http://localhost:8080/1"}]`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "GET request error")
+
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
+			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
+			assert.JSONEq(t, tt.want.result, string(tt.args.w.Body()))
+		})
+	}
+}
+
 func TestApp_handlePing(t *testing.T) {
 	type fields struct {
 		shortener     shortener.Shortener
