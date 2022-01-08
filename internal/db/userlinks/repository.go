@@ -44,6 +44,11 @@ func (repository *PostgresRepository) List(ctx context.Context, userID auth.User
 		result = append(result, UserLink{UserID: userID, Link: link})
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
 
@@ -59,15 +64,19 @@ func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID a
 
 	defer rows.Close()
 
+	userLink := UserLink{}
 	if rows.Next() {
 		userLink := UserLink{}
 		err := rows.Scan(&userLink.ID, &userLink.UserID, &userLink.LinkID)
 		if err != nil {
 			return nil, err
 		}
-
-		return &userLink, nil
 	}
 
-	return nil, nil
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return &userLink, nil
 }

@@ -82,6 +82,11 @@ func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalU
 			}
 		}
 
+		err = rows.Err()
+		if err != nil {
+			return nil, err
+		}
+
 		result[i] = link
 
 		if err = rows.Close(); err != nil {
@@ -105,16 +110,19 @@ func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID
 
 	defer rows.Close()
 
+	link := Link{}
 	if rows.Next() {
-		link := Link{}
 		if err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL); err != nil {
 			return nil, err
 		}
-
-		return &link, nil
 	}
 
-	return nil, nil
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return &link, nil
 }
 
 func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, error) {
@@ -133,6 +141,11 @@ func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, 
 		}
 
 		count = count + 1
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return 1, err
 	}
 
 	return count, nil
