@@ -10,6 +10,7 @@ type Link struct {
 	OriginalURL string
 }
 
+//go:generate mockery --name=Repository
 type Repository interface {
 	Create(ctx context.Context, shortID string, originalURL string) (*Link, bool, error)
 	CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error)

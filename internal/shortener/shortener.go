@@ -14,6 +14,7 @@ import (
 // Shortener makes links shorter.
 type Shortener struct {
 	prefix              string
+	database            db.DB
 	linksRepository     links.Repository
 	userLinksRepository userlinks.Repository
 }
@@ -24,18 +25,19 @@ type UrlsMap struct {
 }
 
 // NewShortener creates new shortener.
-func NewShortener(prefix string) Shortener {
-	if err := db.CreateSchema(); err != nil {
-		panic(err)
-	}
-
+func NewShortener(prefix string, database db.DB) Shortener {
 	shortener := Shortener{
-		prefix: prefix,
-		linksRepository: links.NewPostgresRepository(db.DB),
-		userLinksRepository: userlinks.NewPostgresRepository(db.DB),
+		prefix:              prefix,
+		database:            database,
+		linksRepository:     links.NewPostgresRepository(database.Instance()),
+		userLinksRepository: userlinks.NewPostgresRepository(database.Instance()),
 	}
 
 	return shortener
+}
+
+func (s Shortener) IsStorageAvailable(ctx context.Context) bool {
+	return s.database.CheckConnection(ctx)
 }
 
 func (s Shortener) MakeShorterBatch(ctx context.Context, originalURLs []string) ([]string, error) {

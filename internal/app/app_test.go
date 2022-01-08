@@ -3,7 +3,9 @@ package app
 import (
 	"encoding/json"
 	"github.com/magmel48/go-web/internal/auth"
-	mocks "github.com/magmel48/go-web/internal/auth/mocks"
+	authmocks "github.com/magmel48/go-web/internal/auth/mocks"
+	dbmocks "github.com/magmel48/go-web/internal/db/mocks"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -67,9 +69,18 @@ func TestApp_handlePost(t *testing.T) {
 		shortenedURL string
 	}
 
-	mockAuth := &mocks.Auth{}
+	mockAuth := &authmocks.Auth{}
 	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
 	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1")
+	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(rows)
 
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080", "test", emptyHeaders)
@@ -85,7 +96,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080"),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -100,7 +111,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080"),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -150,7 +161,18 @@ func TestApp_handleJSONPost(t *testing.T) {
 		result      ShortenResult
 	}
 
-	mockAuth := &mocks.Auth{}
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1")
+	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(rows)
 
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
@@ -172,7 +194,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080"),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -187,7 +209,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080"),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -241,9 +263,18 @@ func TestApp_handleGet(t *testing.T) {
 		shortenedURL string
 	}
 
-	mockAuth := &mocks.Auth{}
+	mockAuth := &authmocks.Auth{}
 	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
 	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"id", "short_id", "original_url"})
+	sqlMock.ExpectQuery(`SELECT "id", "short_id", "original_url" FROM "links"`).WillReturnRows(rows)
 
 	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/1", "", emptyHeaders)
 
@@ -256,7 +287,7 @@ func TestApp_handleGet(t *testing.T) {
 		{
 			name: "no url found for fresh db in shortener",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080"),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{

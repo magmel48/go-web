@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// PostgresRepository is implementation of abstract Repository.
 type PostgresRepository struct {
 	db *sql.DB
 }
@@ -16,7 +17,7 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 
 func (repository *PostgresRepository) Create(ctx context.Context, shortID string, originalURL string) (*Link, bool, error) {
 	if shortID == "" {
-		linksCount, _ := repository.getLinksCount(ctx)
+		linksCount, _ := repository.getNextShortID(ctx)
 		shortID = strconv.Itoa(linksCount)
 	}
 
@@ -40,7 +41,7 @@ func (repository *PostgresRepository) Create(ctx context.Context, shortID string
 
 func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 	result := make([]Link, len(originalURLs))
-	linksCount, _ := repository.getLinksCount(ctx)
+	linksCount, _ := repository.getNextShortID(ctx)
 
 	tx, err := repository.db.Begin()
 	if err != nil {
@@ -116,19 +117,19 @@ func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID
 	return nil, nil
 }
 
-func (repository *PostgresRepository) getLinksCount(ctx context.Context) (int, error) {
+func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, error) {
 	count := 0
 
 	rows, err := repository.db.QueryContext(ctx, `SELECT COUNT(*) FROM "links"`)
 	if err != nil {
-		return 0, err
+		return 1, err
 	}
 
 	defer rows.Close()
 
 	for rows.Next() {
 		if err := rows.Scan(&count); err != nil {
-			return 0, err
+			return 1, err
 		}
 
 		count = count + 1

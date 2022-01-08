@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"github.com/magmel48/go-web/internal/auth"
-	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/db/links"
 )
 
+// PostgresRepository is implementation of abstract Repository.
 type PostgresRepository struct {
 	db *sql.DB
 }
@@ -17,14 +17,14 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 }
 
 func (repository *PostgresRepository) Create(ctx context.Context, userID auth.UserID, linkID int) error {
-	_, err := db.DB.ExecContext(
+	_, err := repository.db.ExecContext(
 		ctx, `INSERT INTO "user_links" ("user_id", "link_id") VALUES ($1, $2)`, *userID, linkID)
 
 	return err
 }
 
 func (repository *PostgresRepository) List(ctx context.Context, userID auth.UserID) ([]UserLink, error) {
-	rows, err := db.DB.QueryContext(
+	rows, err := repository.db.QueryContext(
 		ctx,
 		`SELECT l."short_id", l."original_url" FROM "user_links" AS ul JOIN "links" as l ON ul."link_id" = l."id" WHERE ul."user_id" = $1`,
 		*userID)
@@ -48,7 +48,7 @@ func (repository *PostgresRepository) List(ctx context.Context, userID auth.User
 }
 
 func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID auth.UserID, linkID int) (*UserLink, error) {
-	rows, err := db.DB.QueryContext(
+	rows, err := repository.db.QueryContext(
 		ctx,
 		`SELECT "id", "user_id", "link_id" FROM "user_links" WHERE "user_id" = $1 AND "link_id" = $2 LIMIT 1`,
 		*userID,

@@ -45,8 +45,13 @@ func NewApp(baseURL string) App {
 		panic(err)
 	}
 
+	database := db.SqlDB{}
+	if err := database.CreateSchema(); err != nil {
+		panic(err)
+	}
+
 	return App{
-		shortener:     shortener.NewShortener(baseURL),
+		shortener:     shortener.NewShortener(baseURL, &database),
 		authenticator: authenticator,
 	}
 }
@@ -201,7 +206,7 @@ func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handlePing(ctx *fasthttp.RequestCtx) {
-	if !db.CheckConnection(ctx) {
+	if !app.shortener.IsStorageAvailable(ctx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	}
 }

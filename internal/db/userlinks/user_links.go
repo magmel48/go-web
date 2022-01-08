@@ -13,6 +13,7 @@ type UserLink struct {
 	Link   links.Link
 }
 
+//go:generate mockery --name=Repository
 type Repository interface {
 	Create(ctx context.Context, userID auth.UserID, linkID int) error
 	List(ctx context.Context, userID auth.UserID) ([]UserLink, error)

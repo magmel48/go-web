@@ -3,16 +3,16 @@ package db
 import "log"
 
 // CreateSchema creates initial schema if no table created before.
-func CreateSchema() error {
-	if DB == nil {
-		err := Connect()
+func (db *SqlDB) CreateSchema() error {
+	if db.instance == nil {
+		err := db.Connect()
 		if err != nil {
 			log.Println("not able to connect")
 			return err
 		}
 	}
 
-	_, err := DB.Exec(`
+	_, err := db.instance.Exec(`
 		CREATE TABLE IF NOT EXISTS links (
 			id BIGSERIAL NOT NULL,
 			short_id VARCHAR(255) NOT NULL,
@@ -26,7 +26,7 @@ func CreateSchema() error {
 		return err
 	}
 
-	_, err = DB.Exec(`
+	_, err = db.instance.Exec(`
 		CREATE TABLE IF NOT EXISTS user_links (
 			id BIGSERIAL NOT NULL,
 			user_id VARCHAR(64) NOT NULL,
@@ -43,7 +43,7 @@ func CreateSchema() error {
 		return err
 	}
 
-	_, err = DB.Exec(`
+	_, err = db.instance.Exec(`
 		ALTER TABLE "links" DROP CONSTRAINT IF EXISTS "unique_original_url"
 	`)
 
@@ -52,7 +52,7 @@ func CreateSchema() error {
 		return err
 	}
 
-	_, err = DB.Exec(`
+	_, err = db.instance.Exec(`
 		ALTER TABLE "links" ADD CONSTRAINT "unique_original_url" UNIQUE (original_url)
 	`)
 
