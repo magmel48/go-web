@@ -15,7 +15,7 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
-func (repository *PostgresRepository) Create(ctx context.Context, shortID string, originalURL string) (*Link, bool, error) {
+func (repository *PostgresRepository) Create(ctx context.Context, shortID string, originalURL string) (*Link, error) {
 	if shortID == "" {
 		linksCount, _ := repository.getNextShortID(ctx)
 		shortID = strconv.Itoa(linksCount)
@@ -32,11 +32,16 @@ func (repository *PostgresRepository) Create(ctx context.Context, shortID string
 		shortID,
 		originalURL).Scan(&link.ID, &link.ShortID); err != nil {
 
-		return nil, false, err
+		return nil, err
 	}
 
 	// shortID != link.ShortID if short_id`s are not the same
-	return &link, shortID != link.ShortID, nil
+	var err error
+	if shortID != link.ShortID {
+		err = ConflictError
+	}
+
+	return &link, err
 }
 
 func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {

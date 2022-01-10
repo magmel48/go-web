@@ -2,8 +2,10 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/db"
+	"github.com/magmel48/go-web/internal/db/links"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"github.com/vardius/gorouter/v4"
@@ -78,23 +80,28 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	userID, _ := getUserID(ctx, app.authenticator)
+	userID, err := getUserID(ctx, app.authenticator)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
 	body := string(ctx.Request.Body())
-	shortURL, isDuplicated, err := app.shortener.MakeShorter(ctx, body, userID)
+	shortURL, err := app.shortener.MakeShorter(ctx, body, userID)
 
 	if err != nil {
+		if errors.Is(err, links.ConflictError) {
+			ctx.SetStatusCode(fasthttp.StatusConflict)
+			return
+		}
+
 		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		return
 	}
 
 	ctx.SetContentType("text/plain; charset=utf-8")
 	ctx.SetBody([]byte(shortURL))
-
-	if isDuplicated {
-		ctx.SetStatusCode(fasthttp.StatusConflict)
-	} else {
-		ctx.SetStatusCode(fasthttp.StatusCreated)
-	}
+	ctx.SetStatusCode(fasthttp.StatusCreated)
 }
 
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
@@ -107,8 +114,18 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	userID, _ := getUserID(ctx, app.authenticator)
-	shortURL, isDuplicated, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
+	userID, err := getUserID(ctx, app.authenticator)
+	if err != nil {
+		if errors.Is(err, links.ConflictError) {
+			ctx.SetStatusCode(fasthttp.StatusConflict)
+			return
+		}
+
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
+	shortURL, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 		return
@@ -126,12 +143,7 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 
 	ctx.SetContentType("application/json; charset=utf-8")
 	ctx.SetBody(response)
-
-	if isDuplicated {
-		ctx.SetStatusCode(fasthttp.StatusConflict)
-	} else {
-		ctx.SetStatusCode(fasthttp.StatusCreated)
-	}
+	ctx.SetStatusCode(fasthttp.StatusCreated)
 }
 
 func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
@@ -185,10 +197,16 @@ func (app App) handleGet(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
-	userID, _ := getUserID(ctx, app.authenticator)
+	userID, err := getUserID(ctx, app.authenticator)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
 	result, err := app.shortener.GetUserLinks(ctx, userID)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
 	}
 
 	if len(result) == 0 {

@@ -55,15 +55,15 @@ func (s Shortener) MakeShorterBatch(ctx context.Context, originalURLs []string) 
 }
 
 // MakeShorter makes a link shorter.
-func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID auth.UserID) (string, bool, error) {
+func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID auth.UserID) (string, error) {
 	_, err := url.ParseRequestURI(originalURL)
 	if err != nil {
-		return "", false, errors.New("cannot parse url")
+		return "", errors.New("cannot parse url")
 	}
 
-	link, isDuplicated, err := s.linksRepository.Create(ctx, "", originalURL)
+	link, err := s.linksRepository.Create(ctx, "", originalURL)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
 
 	// store the link for the userID if needed
@@ -71,12 +71,12 @@ func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID a
 		userLink, _ := s.userLinksRepository.FindByLinkID(ctx, userID, link.ID)
 		if userLink == nil {
 			if err = s.userLinksRepository.Create(ctx, userID, link.ID); err != nil {
-				return "", false, err
+				return "", err
 			}
 		}
 	}
 
-	return fmt.Sprintf("%s/%s", s.prefix, link.ShortID), isDuplicated, nil
+	return fmt.Sprintf("%s/%s", s.prefix, link.ShortID), nil
 }
 
 // RestoreLong restores short link to initial state if an info was stored before.

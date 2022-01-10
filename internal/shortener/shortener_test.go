@@ -23,7 +23,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 
 	linksRepository := linksmocks.Repository{}
 	linksRepository.On("Create", mock.Anything, mock.Anything, mock.Anything).Return(
-		&links.Link{ShortID: "1"}, false, nil)
+		&links.Link{ShortID: "1"}, nil)
 
 	userLinksRepository := userlinksmocks.Repository{}
 	userLinksRepository.On(
@@ -55,7 +55,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 				userLinksRepository: tt.fields.userLinksRepository,
 			}
 
-			if got, _, err := s.MakeShorter(context.Background(), tt.args.url, auth.NewUserID()); got != tt.want || err != nil {
+			if got, err := s.MakeShorter(context.Background(), tt.args.url, auth.NewUserID()); got != tt.want {
 				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
 			}
 		})

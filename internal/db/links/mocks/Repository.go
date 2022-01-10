@@ -15,7 +15,7 @@ type Repository struct {
 }
 
 // Create provides a mock function with given fields: ctx, shortID, originalURL
-func (_m *Repository) Create(ctx context.Context, shortID string, originalURL string) (*links.Link, bool, error) {
+func (_m *Repository) Create(ctx context.Context, shortID string, originalURL string) (*links.Link, error) {
 	ret := _m.Called(ctx, shortID, originalURL)
 
 	var r0 *links.Link
@@ -27,21 +27,14 @@ func (_m *Repository) Create(ctx context.Context, shortID string, originalURL st
 		}
 	}
 
-	var r1 bool
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) bool); ok {
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
 		r1 = rf(ctx, shortID, originalURL)
 	} else {
-		r1 = ret.Get(1).(bool)
+		r1 = ret.Error(1)
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
-		r2 = rf(ctx, shortID, originalURL)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // CreateBatch provides a mock function with given fields: ctx, originalURLs
