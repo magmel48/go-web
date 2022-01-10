@@ -90,7 +90,7 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 	shortURL, err := app.shortener.MakeShorter(ctx, body, userID)
 
 	if err != nil {
-		if errors.Is(err, links.ConflictError) {
+		if errors.Is(err, links.ErrConflict) {
 			ctx.SetStatusCode(fasthttp.StatusConflict)
 			return
 		}
@@ -116,7 +116,7 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 
 	userID, err := getUserID(ctx, app.authenticator)
 	if err != nil {
-		if errors.Is(err, links.ConflictError) {
+		if errors.Is(err, links.ErrConflict) {
 			ctx.SetStatusCode(fasthttp.StatusConflict)
 			return
 		}

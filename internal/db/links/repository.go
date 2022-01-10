@@ -38,7 +38,7 @@ func (repository *PostgresRepository) Create(ctx context.Context, shortID string
 	// shortID != link.ShortID if short_id`s are not the same
 	var err error
 	if shortID != link.ShortID {
-		err = ConflictError
+		err = ErrConflict
 	}
 
 	return &link, err
