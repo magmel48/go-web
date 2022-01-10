@@ -18,4 +18,4 @@ type Repository interface {
 	FindByShortID(ctx context.Context, shortID string) (*Link, error)
 }
 
-var ConflictError = errors.New("")
+var ConflictError = errors.New("conflict")
