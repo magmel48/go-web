@@ -90,18 +90,18 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 	shortURL, err := app.shortener.MakeShorter(ctx, body, userID)
 
 	if err != nil {
-		if errors.Is(err, links.ErrConflict) {
-			ctx.SetStatusCode(fasthttp.StatusConflict)
+		if !errors.Is(err, links.ErrConflict) {
+			ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 			return
 		}
 
-		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
-		return
+		ctx.SetStatusCode(fasthttp.StatusConflict)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusCreated)
 	}
 
 	ctx.SetContentType("text/plain; charset=utf-8")
 	ctx.SetBody([]byte(shortURL))
-	ctx.SetStatusCode(fasthttp.StatusCreated)
 }
 
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
@@ -116,19 +116,20 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 
 	userID, err := getUserID(ctx, app.authenticator)
 	if err != nil {
-		if errors.Is(err, links.ErrConflict) {
-			ctx.SetStatusCode(fasthttp.StatusConflict)
-			return
-		}
-
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 		return
 	}
 
 	shortURL, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
 	if err != nil {
-		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
-		return
+		if !errors.Is(err, links.ErrConflict) {
+			ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+			return
+		}
+
+		ctx.SetStatusCode(fasthttp.StatusConflict)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusCreated)
 	}
 
 	result := ShortenResult{
@@ -143,7 +144,6 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 
 	ctx.SetContentType("application/json; charset=utf-8")
 	ctx.SetBody(response)
-	ctx.SetStatusCode(fasthttp.StatusCreated)
 }
 
 func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
