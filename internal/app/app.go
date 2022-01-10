@@ -2,95 +2,173 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/buaazp/fasthttprouter"
-	"github.com/magmel48/go-web/internal/config"
+	"errors"
+	"github.com/magmel48/go-web/internal/auth"
+	"github.com/magmel48/go-web/internal/db"
+	"github.com/magmel48/go-web/internal/db/links"
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
-	"net/http"
-	"os"
-	"strings"
+	"github.com/vardius/gorouter/v4"
+	"github.com/vardius/gorouter/v4/context"
 )
 
 // App makes urls shorter.
 type App struct {
-	shortener shortener.Shortener
+	shortener     shortener.Shortener
+	authenticator auth.Auth
 }
 
-// Payload represents payload of request to /api/shorten.
-type Payload struct {
+// ShortenPayload represents payload of a request to /api/shorten.
+type ShortenPayload struct {
 	URL string `json:"url"`
 }
 
-// Result represents response from /api/shorten.
-type Result struct {
+// ShortenResult represents response from /api/shorten.
+type ShortenResult struct {
 	Result string `json:"result"`
+}
+
+// BatchPayloadElement is one element from array from payload of a request to /api/shorten/batch.
+type BatchPayloadElement struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+// BatchResultElement is one element from array from response from /api/shorten/batch.
+type BatchResultElement struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }
 
 // NewApp creates new app that handles requests for making url shorter.
 func NewApp(baseURL string) App {
-	fileBackup, err := shortener.NewFileBackup(config.FilePath, os.OpenFile)
+	authenticator, err := auth.NewCustomAuth()
 	if err != nil {
 		panic(err)
 	}
 
+	database := db.SQLDB{}
+	if err := database.CreateSchema(); err != nil {
+		panic(err)
+	}
+
 	return App{
-		shortener: shortener.NewShortener(baseURL, fileBackup),
+		shortener:     shortener.NewShortener(baseURL, &database),
+		authenticator: authenticator,
 	}
 }
 
 // HTTPHandler handles http requests.
 func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
-	router := fasthttprouter.New()
+	router := gorouter.NewFastHTTPRouter()
 	router.POST("/", app.handlePost)
 	router.POST("/api/shorten", app.handleJSONPost)
-	router.GET("/:id", app.handleGet)
+	router.POST("/api/shorten/batch", app.handleBatchPost)
+	router.GET("/user/urls", app.handleUserGet)
+	router.GET("/ping", app.handlePing)
+	router.GET("/{id}", app.handleGet)
 
-	return router.Handler
+	return cookiesHandler(app.authenticator)(
+		decompressHandler( // only for reading request
+			fasthttp.CompressHandlerBrotliLevel( // only for writing response
+				router.HandleFastHTTP, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
 }
 
 func (app App) handlePost(ctx *fasthttp.RequestCtx) {
-	if ctx.PostBody() == nil {
+	if ctx.Request.Body() == nil {
 		ctx.Error("empty request body", fasthttp.StatusBadRequest)
 		return
 	}
 
-	body := string(ctx.PostBody())
-	shortURL, err := app.shortener.MakeShorter(body)
-
+	userID, err := getUserID(ctx, app.authenticator)
 	if err != nil {
-		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 		return
 	}
 
+	body := string(ctx.Request.Body())
+	shortURL, err := app.shortener.MakeShorter(ctx, body, userID)
+
+	if err != nil {
+		if !errors.Is(err, links.ErrConflict) {
+			ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+			return
+		}
+
+		ctx.SetStatusCode(fasthttp.StatusConflict)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusCreated)
+	}
+
 	ctx.SetContentType("text/plain; charset=utf-8")
-	ctx.SetStatusCode(fasthttp.StatusCreated)
 	ctx.SetBody([]byte(shortURL))
 }
 
 func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
-	var payload Payload
+	var payload ShortenPayload
 
-	contentType := ctx.Request.Header.Peek("Content-Type")
-	if strings.Index(string(contentType), "application/json") != 0 {
-		ctx.Error("wrong Content-Type header", fasthttp.StatusBadRequest)
-		return
-	}
-
-	body := ctx.PostBody()
+	body := ctx.Request.Body()
 	err := json.Unmarshal(body, &payload)
 	if err != nil {
 		ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
 		return
 	}
 
-	shortURL, err := app.shortener.MakeShorter(payload.URL)
+	userID, err := getUserID(ctx, app.authenticator)
 	if err != nil {
-		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
 		return
 	}
 
-	result := Result{
+	shortURL, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
+	if err != nil {
+		if !errors.Is(err, links.ErrConflict) {
+			ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+			return
+		}
+
+		ctx.SetStatusCode(fasthttp.StatusConflict)
+	} else {
+		ctx.SetStatusCode(fasthttp.StatusCreated)
+	}
+
+	result := ShortenResult{
 		Result: shortURL,
+	}
+
+	response, err := json.Marshal(result)
+	if err != nil {
+		ctx.Error("json marshal error", fasthttp.StatusBadRequest)
+		return
+	}
+
+	ctx.SetContentType("application/json; charset=utf-8")
+	ctx.SetBody(response)
+}
+
+func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
+	var payload []BatchPayloadElement
+
+	body := ctx.Request.Body()
+	err := json.Unmarshal(body, &payload)
+	if err != nil {
+		ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+		return
+	}
+
+	originalURLs := make([]string, len(payload))
+	for i, el := range payload {
+		originalURLs[i] = el.OriginalURL
+	}
+
+	shortURLs, err := app.shortener.MakeShorterBatch(ctx, originalURLs)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+	}
+
+	result := make([]BatchResultElement, len(payload))
+	for i, el := range shortURLs {
+		result[i] = BatchResultElement{CorrelationID: payload[i].CorrelationID, ShortURL: el}
 	}
 
 	response, err := json.Marshal(result)
@@ -105,19 +183,48 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
-	rawID := ctx.UserValue("id")
+	params := ctx.UserValue("params").(context.Params)
+	id := params.Value("id")
 
-	switch id := rawID.(type) {
-	case string:
-		initialURL, err := app.shortener.RestoreLong(id)
+	initialURL, err := app.shortener.RestoreLong(ctx, id)
+	if err != nil {
+		ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
+		return
+	}
+
+	ctx.Response.Header.Set("Location", initialURL)
+	ctx.SetStatusCode(fasthttp.StatusTemporaryRedirect)
+}
+
+func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
+	userID, err := getUserID(ctx, app.authenticator)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
+	result, err := app.shortener.GetUserLinks(ctx, userID)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
+	if len(result) == 0 {
+		ctx.SetStatusCode(fasthttp.StatusNoContent)
+	} else {
+		response, err := json.Marshal(result)
 		if err != nil {
-			ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
+			ctx.Error("json marshal error", fasthttp.StatusBadRequest)
 			return
 		}
 
-		ctx.Response.Header.Set("Location", initialURL)
-		ctx.SetStatusCode(http.StatusTemporaryRedirect)
-	default:
-		ctx.Error("wrong id param", http.StatusBadRequest)
+		ctx.SetContentType("application/json; charset=utf-8")
+		ctx.SetBody(response)
+	}
+}
+
+func (app App) handlePing(ctx *fasthttp.RequestCtx) {
+	if !app.shortener.IsStorageAvailable(ctx) {
+		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	}
 }

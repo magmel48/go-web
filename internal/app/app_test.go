@@ -2,8 +2,11 @@ package app
 
 import (
 	"encoding/json"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/magmel48/go-web/internal/auth"
+	authmocks "github.com/magmel48/go-web/internal/auth/mocks"
+	dbmocks "github.com/magmel48/go-web/internal/db/mocks"
 	"github.com/magmel48/go-web/internal/shortener"
-	"github.com/magmel48/go-web/internal/shortener/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/valyala/fasthttp"
@@ -53,7 +56,8 @@ func acquireRequest(method string, url string, body string, headers map[string]s
 
 func TestApp_handlePost(t *testing.T) {
 	type fields struct {
-		shortener shortener.Shortener
+		shortener     shortener.Shortener
+		authenticator auth.Auth
 	}
 	type args struct {
 		w *fasthttp.Response
@@ -65,9 +69,18 @@ func TestApp_handlePost(t *testing.T) {
 		shortenedURL string
 	}
 
-	mockBackup := &mocks.Backup{}
-	mockBackup.On("ReadAll").Return(make(map[string]string))
-	mockBackup.On("Append", mock.AnythingOfType("string")).Return(nil)
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1")
+	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(rows)
 
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080", "test", emptyHeaders)
@@ -83,7 +96,8 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -95,8 +109,11 @@ func TestApp_handlePost(t *testing.T) {
 			},
 		},
 		{
-			name:   "happy path",
-			fields: fields{shortener: shortener.NewShortener("http://localhost:8080", mockBackup)},
+			name: "happy path",
+			fields: fields{
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
+			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
 				r: okURLInBodyRequest,
@@ -112,7 +129,8 @@ func TestApp_handlePost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := App{
-				shortener: tt.fields.shortener,
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
 			}
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
@@ -130,7 +148,8 @@ func TestApp_handlePost(t *testing.T) {
 
 func TestApp_handleJSONPost(t *testing.T) {
 	type fields struct {
-		shortener shortener.Shortener
+		shortener     shortener.Shortener
+		authenticator auth.Auth
 	}
 	type args struct {
 		w *fasthttp.Response
@@ -139,21 +158,28 @@ func TestApp_handleJSONPost(t *testing.T) {
 	type want struct {
 		contentType string
 		statusCode  int
-		result      Result
+		result      ShortenResult
 	}
 
-	mockBackup := &mocks.Backup{}
-	mockBackup.On("ReadAll").Return(make(map[string]string))
-	mockBackup.On("Append", mock.AnythingOfType("string")).Return(nil)
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1")
+	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(rows)
 
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
 
 	malformedBody, _ := json.Marshal("[1,2,3]")
-	okBody, _ := json.Marshal(Payload{URL: "https://google.com"})
+	okBody, _ := json.Marshal(ShortenPayload{URL: "https://google.com"})
 
-	wrongContentTypeRequest := acquireRequest(
-		fasthttp.MethodPost, "http://localhost:8080/api/shorten", string(okBody), emptyHeaders)
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080/api/shorten", string(malformedBody), headers)
 	okURLInBodyRequest := acquireRequest(
@@ -166,23 +192,10 @@ func TestApp_handleJSONPost(t *testing.T) {
 		want   want
 	}{
 		{
-			name: "wrong Content-Type header",
-			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
-			},
-			args: args{
-				w: fasthttp.AcquireResponse(),
-				r: wrongContentTypeRequest,
-			},
-			want: want{
-				contentType: "text/plain; charset=utf-8",
-				statusCode:  fasthttp.StatusBadRequest,
-			},
-		},
-		{
 			name: "malformed url",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -196,7 +209,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -205,7 +219,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 			want: want{
 				contentType: "application/json; charset=utf-8",
 				statusCode:  fasthttp.StatusCreated,
-				result:      Result{Result: "http://localhost:8080/1"},
+				result:      ShortenResult{Result: "http://localhost:8080/1"},
 			},
 		},
 	}
@@ -213,7 +227,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := App{
-				shortener: tt.fields.shortener,
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
 			}
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
@@ -223,7 +238,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
 
 			if tt.args.w.StatusCode() == fasthttp.StatusCreated {
-				var result Result
+				var result ShortenResult
 
 				err = json.Unmarshal(tt.args.w.Body(), &result)
 				assert.NoError(t, err, "unmarshal response error")
@@ -235,7 +250,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 
 func TestApp_handleGet(t *testing.T) {
 	type fields struct {
-		shortener shortener.Shortener
+		shortener     shortener.Shortener
+		authenticator auth.Auth
 	}
 	type args struct {
 		w *fasthttp.Response
@@ -247,8 +263,18 @@ func TestApp_handleGet(t *testing.T) {
 		shortenedURL string
 	}
 
-	mockBackup := &mocks.Backup{}
-	mockBackup.On("ReadAll").Return(make(map[string]string))
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"id", "short_id", "original_url"})
+	sqlMock.ExpectQuery(`SELECT "id", "short_id", "original_url" FROM "links"`).WillReturnRows(rows)
 
 	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/1", "", emptyHeaders)
 
@@ -261,7 +287,8 @@ func TestApp_handleGet(t *testing.T) {
 		{
 			name: "no url found for fresh db in shortener",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockBackup),
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -277,7 +304,8 @@ func TestApp_handleGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app := App{
-				shortener: tt.fields.shortener,
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
 			}
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
@@ -285,6 +313,136 @@ func TestApp_handleGet(t *testing.T) {
 
 			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
 			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
+		})
+	}
+}
+
+func TestApp_handleUserGet(t *testing.T) {
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+	type want struct {
+		contentType string
+		statusCode  int
+		result      string
+	}
+
+	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/user/urls", "", emptyHeaders)
+
+	userID := "user_id_1"
+
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(&userID, nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	rows := sqlmock.NewRows([]string{"short_id", "original_url"}).AddRow("1", "https://google.com")
+	sqlMock.ExpectQuery(
+		`SELECT l."short_id", l."original_url" FROM "user_links"`).WillReturnRows(rows)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   want
+	}{
+		{
+			name: "gets all user related urls",
+			fields: fields{
+				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: request,
+			},
+			want: want{
+				contentType: "application/json; charset=utf-8",
+				statusCode:  fasthttp.StatusOK,
+				result:      `[{"original_url":"https://google.com", "short_url":"http://localhost:8080/1"}]`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "GET request error")
+
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
+			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
+			assert.JSONEq(t, tt.want.result, string(tt.args.w.Body()))
+		})
+	}
+}
+
+func TestApp_handlePing(t *testing.T) {
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+	type want struct {
+		statusCode int
+	}
+
+	pingRequest := acquireRequest(
+		fasthttp.MethodGet, "http://localhost:8080/ping", "", emptyHeaders)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+	mockDB.On("Instance").Return(nil)
+	mockDB.On("CheckConnection", mock.Anything).Return(false)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   want
+	}{
+		{
+			name: "returns 500 if connection is not ok",
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", mockDB),
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: pingRequest,
+			},
+			want: want{
+				statusCode: fasthttp.StatusInternalServerError,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "GET request error")
+
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
 		})
 	}
 }

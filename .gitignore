@@ -23,5 +23,5 @@ vendor/
 .vscode
 
 # Project specifics
-links.txt
+backup.txt
 main
