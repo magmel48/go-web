@@ -63,20 +63,22 @@ func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID a
 
 	link, err := s.linksRepository.Create(ctx, "", originalURL)
 	if err != nil {
-		return "", err
+		if !errors.Is(err, links.ErrConflict) {
+			return "", err
+		}
 	}
 
 	// store the link for the userID if needed
 	if userID != nil {
 		userLink, _ := s.userLinksRepository.FindByLinkID(ctx, userID, link.ID)
 		if userLink == nil {
-			if err = s.userLinksRepository.Create(ctx, userID, link.ID); err != nil {
+			if err := s.userLinksRepository.Create(ctx, userID, link.ID); err != nil {
 				return "", err
 			}
 		}
 	}
 
-	return fmt.Sprintf("%s/%s", s.prefix, link.ShortID), nil
+	return fmt.Sprintf("%s/%s", s.prefix, link.ShortID), err
 }
 
 // RestoreLong restores short link to initial state if an info was stored before.
