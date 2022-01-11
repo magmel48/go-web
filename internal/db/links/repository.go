@@ -108,7 +108,7 @@ func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalU
 
 func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID string) (*Link, error) {
 	rows, err := repository.db.QueryContext(
-		ctx, `SELECT "id", "short_id", "original_url" FROM "links" WHERE "short_id" = $1 LIMIT 1`, shortID)
+		ctx, `SELECT "id", "short_id", "original_url", "is_deleted" FROM "links" WHERE "short_id" = $1 LIMIT 1`, shortID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID
 
 	link := Link{}
 	if rows.Next() {
-		if err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL); err != nil {
+		if err := rows.Scan(&link.ID, &link.ShortID, &link.OriginalURL, &link.IsDeleted); err != nil {
 			return nil, err
 		}
 	}

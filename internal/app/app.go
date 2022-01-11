@@ -190,6 +190,11 @@ func (app App) handleGet(ctx *fasthttp.RequestCtx) {
 
 	initialURL, err := app.shortener.RestoreLong(ctx, id)
 	if err != nil {
+		if errors.Is(err, shortener.ErrDeleted) {
+			ctx.SetStatusCode(fasthttp.StatusGone)
+			return
+		}
+
 		ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
 		return
 	}
@@ -238,6 +243,17 @@ func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// TODO
+	var payload []string
+
+	body := ctx.Request.Body()
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+		return
+	}
+
+	// TODO use payload
 	log.Println(userID)
+
+	ctx.SetStatusCode(fasthttp.StatusAccepted)
 }

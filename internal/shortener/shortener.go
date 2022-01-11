@@ -11,6 +11,8 @@ import (
 	"net/url"
 )
 
+var ErrDeleted = errors.New("the link is deleted")
+
 // Shortener makes links shorter.
 type Shortener struct {
 	prefix              string
@@ -90,6 +92,10 @@ func (s Shortener) RestoreLong(ctx context.Context, shortID string) (string, err
 
 	if link == nil {
 		return "", errors.New("not found")
+	}
+
+	if link.IsDeleted {
+		return link.OriginalURL, ErrDeleted
 	}
 
 	return link.OriginalURL, nil

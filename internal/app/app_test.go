@@ -456,14 +456,40 @@ func TestApp_handleDelete(t *testing.T) {
 		w *fasthttp.Response
 		r *fasthttp.Request
 	}
+	type want struct {
+		statusCode int
+	}
+
+	request := acquireRequest(
+		fasthttp.MethodDelete, "http://localhost:8080/api/user/urls", `["1"]`, emptyHeaders)
+
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+	mockDB.On("Instance").Return(nil)
 
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
+		want   want
 	}{
 		{
 			name: "happy path",
+			fields: fields{
+				shortener: shortener.NewShortener("http://localhost:8080", mockDB),
+				authenticator: mockAuth,
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: request,
+			},
+			want: want{
+				statusCode: fasthttp.StatusAccepted,
+			},
 		},
 	}
 
@@ -477,7 +503,7 @@ func TestApp_handleDelete(t *testing.T) {
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
 			assert.NoError(t, err, "DELETE request error")
 
-			// FIXME implement
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
 		})
 	}
 }
