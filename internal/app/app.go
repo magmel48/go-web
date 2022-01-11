@@ -10,6 +10,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/vardius/gorouter/v4"
 	"github.com/vardius/gorouter/v4/context"
+	"log"
 )
 
 // App makes urls shorter.
@@ -67,6 +68,7 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router.GET("/user/urls", app.handleUserGet)
 	router.GET("/ping", app.handlePing)
 	router.GET("/{id}", app.handleGet)
+	router.DELETE("/api/user/urls", app.handleDelete)
 
 	return cookiesHandler(app.authenticator)(
 		decompressHandler( // only for reading request
@@ -227,4 +229,15 @@ func (app App) handlePing(ctx *fasthttp.RequestCtx) {
 	if !app.shortener.IsStorageAvailable(ctx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	}
+}
+
+func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
+	userID, err := getUserID(ctx, app.authenticator)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
+	// TODO
+	log.Println(userID)
 }

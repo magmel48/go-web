@@ -446,3 +446,38 @@ func TestApp_handlePing(t *testing.T) {
 		})
 	}
 }
+
+func TestApp_handleDelete(t *testing.T) {
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "happy path",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "DELETE request error")
+
+			// FIXME implement
+		})
+	}
+}

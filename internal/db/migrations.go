@@ -61,6 +61,10 @@ func (db *SQLDB) CreateSchema() error {
 		return err
 	}
 
+	_, err = db.instance.Exec(`
+		ALTER TABLE "links" ADD COLUMN IF NOT EXISTS "is_deleted" BOOLEAN NULL DEFAULT FALSE
+	`)
+
 	log.Println("app schema was successfully restored")
 	return nil
 }
