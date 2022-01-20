@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/magmel48/go-web/internal/auth"
@@ -96,7 +97,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -111,7 +112,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -194,7 +195,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -209,7 +210,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -287,7 +288,7 @@ func TestApp_handleGet(t *testing.T) {
 		{
 			name: "no url found for fresh db in shortener",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -358,7 +359,7 @@ func TestApp_handleUserGet(t *testing.T) {
 		{
 			name: "gets all user related urls",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -420,7 +421,7 @@ func TestApp_handlePing(t *testing.T) {
 		{
 			name: "returns 500 if connection is not ok",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener: shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -480,7 +481,7 @@ func TestApp_handleDelete(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{

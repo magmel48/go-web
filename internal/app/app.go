@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/magmel48/go-web/internal/auth"
@@ -9,8 +10,7 @@ import (
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"github.com/vardius/gorouter/v4"
-	"github.com/vardius/gorouter/v4/context"
-	"log"
+	routercontext "github.com/vardius/gorouter/v4/context"
 )
 
 // App makes urls shorter.
@@ -42,7 +42,7 @@ type BatchResultElement struct {
 }
 
 // NewApp creates new app that handles requests for making url shorter.
-func NewApp(baseURL string) App {
+func NewApp(ctx context.Context, baseURL string) App {
 	authenticator, err := auth.NewCustomAuth()
 	if err != nil {
 		panic(err)
@@ -54,7 +54,7 @@ func NewApp(baseURL string) App {
 	}
 
 	return App{
-		shortener:     shortener.NewShortener(baseURL, &database),
+		shortener:     shortener.NewShortener(ctx, baseURL, &database),
 		authenticator: authenticator,
 	}
 }
@@ -185,7 +185,7 @@ func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
-	params := ctx.UserValue("params").(context.Params)
+	params := ctx.UserValue("params").(routercontext.Params)
 	id := params.Value("id")
 
 	initialURL, err := app.shortener.RestoreLong(ctx, id)
@@ -252,8 +252,12 @@ func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	// TODO use payload
-	log.Println(userID)
+	go func() {
+		err := app.shortener.DeleteURLs(userID, payload)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	ctx.SetStatusCode(fasthttp.StatusAccepted)
 }

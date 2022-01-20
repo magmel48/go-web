@@ -15,6 +15,7 @@ var ErrDeleted = errors.New("the link is deleted")
 
 // Shortener makes links shorter.
 type Shortener struct {
+	ctx                 context.Context
 	prefix              string
 	database            db.DB
 	linksRepository     links.Repository
@@ -27,8 +28,9 @@ type UrlsMap struct {
 }
 
 // NewShortener creates new shortener.
-func NewShortener(prefix string, database db.DB) Shortener {
+func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener {
 	shortener := Shortener{
+		ctx:                 ctx,
 		prefix:              prefix,
 		database:            database,
 		linksRepository:     links.NewPostgresRepository(database.Instance()),
@@ -121,4 +123,10 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 	}
 
 	return result, nil
+}
+
+func (s Shortener) DeleteURLs(userID auth.UserID, IDs []string) error {
+	// TODO
+
+	return nil
 }
