@@ -64,8 +64,8 @@ func TestShortener_MakeShorter(t *testing.T) {
 
 func TestShortener_RestoreLong(t *testing.T) {
 	type fields struct {
-		prefix              string
-		linksRepository     links.Repository
+		prefix          string
+		linksRepository links.Repository
 	}
 	type args struct {
 		id string
@@ -88,7 +88,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				prefix: "http://localhost:8080",
+				prefix:          "http://localhost:8080",
 				linksRepository: &withLinksRepository,
 			},
 			args:    args{id: "1"},
@@ -98,7 +98,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 		{
 			name: "unhappy path",
 			fields: fields{
-				prefix: "http://localhost:8080",
+				prefix:          "http://localhost:8080",
 				linksRepository: &withoutLinksRepository,
 			},
 			args:    args{id: "1"},
@@ -110,7 +110,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := Shortener{
-				prefix: tt.fields.prefix,
+				prefix:          tt.fields.prefix,
 				linksRepository: tt.fields.linksRepository,
 			}
 

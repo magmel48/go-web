@@ -9,6 +9,7 @@ import (
 	"log"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -20,7 +21,11 @@ func main() {
 	defer cancel()
 
 	shortenerApp := app.NewApp(ctx, config.BaseShortenerURL)
-	server := fasthttp.Server{Handler: shortenerApp.HTTPHandler(), CloseOnShutdown: true}
+	server := fasthttp.Server{
+		Handler:         shortenerApp.HTTPHandler(),
+		CloseOnShutdown: true,
+		IdleTimeout:     time.Second,
+	}
 
 	eg, ctx := errgroup.WithContext(ctx)
 
