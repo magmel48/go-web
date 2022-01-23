@@ -3,10 +3,14 @@ package shortener
 import (
 	"context"
 	"github.com/magmel48/go-web/internal/auth"
+	"github.com/magmel48/go-web/internal/daemons"
+	"github.com/magmel48/go-web/internal/daemons/mocks"
+	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/db/links"
 	linksmocks "github.com/magmel48/go-web/internal/db/links/mocks"
 	"github.com/magmel48/go-web/internal/db/userlinks"
 	userlinksmocks "github.com/magmel48/go-web/internal/db/userlinks/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
@@ -55,7 +59,7 @@ func TestShortener_MakeShorter(t *testing.T) {
 				userLinksRepository: tt.fields.userLinksRepository,
 			}
 
-			if got, err := s.MakeShorter(context.Background(), tt.args.url, auth.NewUserID()); got != tt.want {
+			if got, err := s.MakeShorter(context.TODO(), tt.args.url, auth.NewUserID()); got != tt.want {
 				t.Errorf("MakeShorter() = %v, want %v, err %v", got, tt.want, err)
 			}
 		})
@@ -114,7 +118,7 @@ func TestShortener_RestoreLong(t *testing.T) {
 				linksRepository: tt.fields.linksRepository,
 			}
 
-			got, err := s.RestoreLong(context.Background(), tt.args.id)
+			got, err := s.RestoreLong(context.TODO(), tt.args.id)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RestoreLong() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -123,6 +127,55 @@ func TestShortener_RestoreLong(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("RestoreLong() got = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestShortener_DeleteURLs(t *testing.T) {
+	type fields struct {
+		ctx                 context.Context
+		prefix              string
+		database            db.DB
+		linksRepository     links.Repository
+		userLinksRepository userlinks.Repository
+		daemon              daemons.Daemon
+	}
+	type args struct {
+		userID   auth.UserID
+		shortIDs []string
+	}
+
+	mockDaemon := mocks.Daemon{}
+	mockDaemon.On("EnqueueJob", mock.Anything)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "should call EnqueueJob of daemon",
+			fields: fields{
+				daemon: &mockDaemon,
+			},
+			args: args{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := Shortener{
+				ctx:                 tt.fields.ctx,
+				prefix:              tt.fields.prefix,
+				database:            tt.fields.database,
+				linksRepository:     tt.fields.linksRepository,
+				userLinksRepository: tt.fields.userLinksRepository,
+				daemon:              tt.fields.daemon,
+			}
+
+			s.DeleteURLs(tt.args.userID, tt.args.shortIDs)
+			assert.Equal(t, len(mockDaemon.Calls), 1)
+			assert.Equal(t, mockDaemon.Calls[0].Method, "EnqueueJob")
 		})
 	}
 }

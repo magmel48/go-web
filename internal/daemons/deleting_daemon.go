@@ -1,26 +1,11 @@
-package shortener
+package daemons
 
 import (
 	"context"
-	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/db/userlinks"
 	"log"
 	"time"
 )
-
-const maxBatchSizeToProcess = 5
-
-type QueryItem struct {
-	UserID   auth.UserID
-	ShortIDs []string
-}
-
-// Daemon is simple daemon that can make a job that specified in Run override.
-//go:generate mockery --name=Daemon
-type Daemon interface {
-	Run(userLinksRepository userlinks.Repository)
-	EnqueueJob(item QueryItem)
-}
 
 // DeletingRecordsDaemon deletes link records periodically.
 type DeletingRecordsDaemon struct {
@@ -31,7 +16,7 @@ type DeletingRecordsDaemon struct {
 func NewDeletingRecordsDaemon(ctx context.Context) *DeletingRecordsDaemon {
 	return &DeletingRecordsDaemon{
 		ctx:   ctx,
-		items: make(chan QueryItem, maxBatchSizeToProcess),
+		items: make(chan QueryItem, 100),
 	}
 }
 

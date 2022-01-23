@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/magmel48/go-web/internal/auth"
+	"github.com/magmel48/go-web/internal/daemons"
 	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/db/links"
 	"github.com/magmel48/go-web/internal/db/userlinks"
@@ -20,7 +21,7 @@ type Shortener struct {
 	database            db.DB
 	linksRepository     links.Repository
 	userLinksRepository userlinks.Repository
-	daemon              Daemon
+	daemon              daemons.Daemon
 }
 
 type UrlsMap struct {
@@ -37,7 +38,7 @@ func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener 
 		database:            database,
 		linksRepository:     links.NewPostgresRepository(database.Instance()),
 		userLinksRepository: userLinksRepository,
-		daemon:              NewDeletingRecordsDaemon(ctx),
+		daemon:              daemons.NewDeletingRecordsDaemon(ctx),
 	}
 
 	// starting deleting requests processing
@@ -132,5 +133,5 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 }
 
 func (s Shortener) DeleteURLs(userID auth.UserID, shortIDs []string) {
-	s.daemon.EnqueueJob(QueryItem{UserID: userID, ShortIDs: shortIDs})
+	s.daemon.EnqueueJob(daemons.QueryItem{UserID: userID, ShortIDs: shortIDs})
 }

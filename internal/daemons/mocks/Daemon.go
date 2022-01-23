@@ -3,8 +3,8 @@
 package mocks
 
 import (
+	shortener "github.com/magmel48/go-web/internal/daemons"
 	userlinks "github.com/magmel48/go-web/internal/db/userlinks"
-	shortener "github.com/magmel48/go-web/internal/shortener"
 	mock "github.com/stretchr/testify/mock"
 )
 
