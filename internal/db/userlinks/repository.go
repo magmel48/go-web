@@ -84,3 +84,16 @@ func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID a
 
 	return nil, nil
 }
+
+func (repository *PostgresRepository) DeleteLinks(ctx context.Context, userID auth.UserID, shortIDs []string) error {
+	_, err := repository.db.ExecContext(
+		ctx,
+		`UPDATE "links" AS l
+		SET "is_deleted" = true
+		FROM "user_links" AS ul
+		WHERE l."short_id" IN $1 AND l."id" = ul."link_id" AND ul."user_id" = $2`,
+		shortIDs,
+		*userID)
+
+	return err
+}

@@ -5,8 +5,8 @@ import (
 	"github.com/magmel48/go-web/internal/app"
 	"github.com/magmel48/go-web/internal/config"
 	"github.com/valyala/fasthttp"
+	"golang.org/x/sync/errgroup"
 	"log"
-	"os"
 	"os/signal"
 	"syscall"
 )
@@ -14,19 +14,25 @@ import (
 func main() {
 	config.Parse()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		termChan := make(chan os.Signal, 1)
-		signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
-		cancel()
-	}()
-
-	log.Printf("starting on %s with %s as base url\n", config.AppDomain, config.BaseShortenerURL)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
 	shortenerApp := app.NewApp(ctx, config.BaseShortenerURL)
-	err := fasthttp.ListenAndServe(config.AppDomain, shortenerApp.HTTPHandler())
+	server := fasthttp.Server{Handler: shortenerApp.HTTPHandler()}
 
-	if err != nil {
-		panic(err)
-	}
+	eg, ctx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error {
+		log.Printf("starting on %s with %s as base url\n", config.AppDomain, config.BaseShortenerURL)
+		return server.ListenAndServe(config.AppDomain)
+	})
+
+	eg.Go(func() error {
+		<-ctx.Done()
+
+		err := server.Shutdown()
+		return err
+	})
+
+	log.Println(eg.Wait())
 }

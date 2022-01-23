@@ -18,4 +18,5 @@ type Repository interface {
 	Create(ctx context.Context, userID auth.UserID, linkID int) error
 	List(ctx context.Context, userID auth.UserID) ([]UserLink, error)
 	FindByLinkID(ctx context.Context, userID auth.UserID, linkID int) (*UserLink, error)
+	DeleteLinks(ctx context.Context, userID auth.UserID, shortIDs []string) error
 }

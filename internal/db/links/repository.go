@@ -3,6 +3,7 @@ package links
 import (
 	"context"
 	"database/sql"
+	"log"
 	"strconv"
 )
 
@@ -53,7 +54,10 @@ func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalU
 		return nil, err
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		err := tx.Rollback()
+		log.Println("CreateBatch tx rollback error", err)
+	}()
 
 	insertStmt, err := tx.PrepareContext(
 		ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES($1, $2) RETURNING "id", "short_id"`)
@@ -113,7 +117,12 @@ func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			log.Println("FindByShortID close rows error", err)
+		}
+	}()
 
 	link := Link{}
 	if rows.Next() {
@@ -142,7 +151,12 @@ func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, 
 		return 1, err
 	}
 
-	defer rows.Close()
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			log.Println("getNextShortID close rows error", err)
+		}
+	}()
 
 	for rows.Next() {
 		if err := rows.Scan(&count); err != nil {
