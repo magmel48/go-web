@@ -31,6 +31,8 @@ func (daemon *DeletingRecordsDaemon) Run(userLinksRepository userlinks.Repositor
 		select {
 		case <-daemon.ctx.Done():
 			log.Println("stopped links deletion processing")
+
+			close(daemon.items)
 			return
 
 		case <-ticker.C:
