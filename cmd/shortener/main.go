@@ -12,13 +12,15 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	config.Parse()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGKILL, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	shortenerApp := app.NewApp(ctx, config.BaseShortenerURL)
-	server := fasthttp.Server{Handler: shortenerApp.HTTPHandler()}
+	server := fasthttp.Server{Handler: shortenerApp.HTTPHandler(), CloseOnShutdown: true}
 
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -29,6 +31,8 @@ func main() {
 
 	eg.Go(func() error {
 		<-ctx.Done()
+
+		log.Println("stopping the service...")
 
 		err := server.Shutdown()
 		return err

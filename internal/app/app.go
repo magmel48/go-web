@@ -252,12 +252,6 @@ func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	go func() {
-		err := app.shortener.DeleteURLs(userID, payload)
-		if err != nil {
-			panic(err)
-		}
-	}()
-
+	go app.shortener.DeleteURLs(userID, payload)
 	ctx.SetStatusCode(fasthttp.StatusAccepted)
 }

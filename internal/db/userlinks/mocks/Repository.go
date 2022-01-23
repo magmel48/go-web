@@ -28,13 +28,13 @@ func (_m *Repository) Create(ctx context.Context, userID *string, linkID int) er
 	return r0
 }
 
-// DeleteLinks provides a mock function with given fields: ctx, userID, shortIDs
-func (_m *Repository) DeleteLinks(ctx context.Context, userID *string, shortIDs []string) error {
-	ret := _m.Called(ctx, userID, shortIDs)
+// DeleteLinks provides a mock function with given fields: ctx, deleteQueryItems
+func (_m *Repository) DeleteLinks(ctx context.Context, deleteQueryItems []userlinks.DeleteQueryItem) error {
+	ret := _m.Called(ctx, deleteQueryItems)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *string, []string) error); ok {
-		r0 = rf(ctx, userID, shortIDs)
+	if rf, ok := ret.Get(0).(func(context.Context, []userlinks.DeleteQueryItem) error); ok {
+		r0 = rf(ctx, deleteQueryItems)
 	} else {
 		r0 = ret.Error(0)
 	}

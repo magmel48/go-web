@@ -20,6 +20,7 @@ type Shortener struct {
 	database            db.DB
 	linksRepository     links.Repository
 	userLinksRepository userlinks.Repository
+	daemon              Daemon
 }
 
 type UrlsMap struct {
@@ -29,13 +30,18 @@ type UrlsMap struct {
 
 // NewShortener creates new shortener.
 func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener {
+	userLinksRepository := userlinks.NewPostgresRepository(database.Instance())
+
 	shortener := Shortener{
-		ctx:                 ctx,
 		prefix:              prefix,
 		database:            database,
 		linksRepository:     links.NewPostgresRepository(database.Instance()),
-		userLinksRepository: userlinks.NewPostgresRepository(database.Instance()),
+		userLinksRepository: userLinksRepository,
+		daemon:              NewDeletingRecordsDaemon(ctx),
 	}
+
+	// starting deleting requests processing
+	go shortener.daemon.Run(userLinksRepository)
 
 	return shortener
 }
@@ -125,8 +131,6 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 	return result, nil
 }
 
-func (s Shortener) DeleteURLs(userID auth.UserID, IDs []string) error {
-	// TODO
-
-	return nil
+func (s Shortener) DeleteURLs(userID auth.UserID, shortIDs []string) {
+	s.daemon.EnqueueJob(QueryItem{UserID: userID, ShortIDs: shortIDs})
 }
