@@ -60,7 +60,6 @@ func (daemon *DeletingRecordsDaemon) Run(userLinksRepository userlinks.Repositor
 						ShortIDs: item.ShortIDs,
 					})
 				default:
-					break
 				}
 			}
 
