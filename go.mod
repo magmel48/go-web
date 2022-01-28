@@ -9,6 +9,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.31.0
 	github.com/vardius/gorouter/v4 v4.5.1
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 )
 
 require (

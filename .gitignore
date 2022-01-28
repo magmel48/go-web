@@ -25,3 +25,4 @@ vendor/
 # Project specifics
 backup.txt
 main
+.env

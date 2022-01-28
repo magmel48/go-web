@@ -9,6 +9,7 @@ type Link struct {
 	ID          int
 	ShortID     string
 	OriginalURL string
+	IsDeleted   bool
 }
 
 //go:generate mockery --name=Repository

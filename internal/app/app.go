@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/magmel48/go-web/internal/auth"
@@ -9,7 +10,7 @@ import (
 	"github.com/magmel48/go-web/internal/shortener"
 	"github.com/valyala/fasthttp"
 	"github.com/vardius/gorouter/v4"
-	"github.com/vardius/gorouter/v4/context"
+	routercontext "github.com/vardius/gorouter/v4/context"
 )
 
 // App makes urls shorter.
@@ -41,7 +42,7 @@ type BatchResultElement struct {
 }
 
 // NewApp creates new app that handles requests for making url shorter.
-func NewApp(baseURL string) App {
+func NewApp(ctx context.Context, baseURL string) App {
 	authenticator, err := auth.NewCustomAuth()
 	if err != nil {
 		panic(err)
@@ -53,7 +54,7 @@ func NewApp(baseURL string) App {
 	}
 
 	return App{
-		shortener:     shortener.NewShortener(baseURL, &database),
+		shortener:     shortener.NewShortener(ctx, baseURL, &database),
 		authenticator: authenticator,
 	}
 }
@@ -67,6 +68,7 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router.GET("/user/urls", app.handleUserGet)
 	router.GET("/ping", app.handlePing)
 	router.GET("/{id}", app.handleGet)
+	router.DELETE("/api/user/urls", app.handleDelete)
 
 	return cookiesHandler(app.authenticator)(
 		decompressHandler( // only for reading request
@@ -183,11 +185,16 @@ func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
 }
 
 func (app App) handleGet(ctx *fasthttp.RequestCtx) {
-	params := ctx.UserValue("params").(context.Params)
+	params := ctx.UserValue("params").(routercontext.Params)
 	id := params.Value("id")
 
 	initialURL, err := app.shortener.RestoreLong(ctx, id)
 	if err != nil {
+		if errors.Is(err, shortener.ErrDeleted) {
+			ctx.SetStatusCode(fasthttp.StatusGone)
+			return
+		}
+
 		ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
 		return
 	}
@@ -227,4 +234,24 @@ func (app App) handlePing(ctx *fasthttp.RequestCtx) {
 	if !app.shortener.IsStorageAvailable(ctx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	}
+}
+
+func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
+	userID, err := getUserID(ctx, app.authenticator)
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+
+	var payload []string
+
+	body := ctx.Request.Body()
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+		return
+	}
+
+	go app.shortener.DeleteURLs(userID, payload)
+	ctx.SetStatusCode(fasthttp.StatusAccepted)
 }

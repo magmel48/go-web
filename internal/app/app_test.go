@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/magmel48/go-web/internal/auth"
@@ -96,7 +97,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -111,7 +112,7 @@ func TestApp_handlePost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -194,7 +195,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "malformed url",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -209,7 +210,7 @@ func TestApp_handleJSONPost(t *testing.T) {
 		{
 			name: "happy path",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -287,7 +288,7 @@ func TestApp_handleGet(t *testing.T) {
 		{
 			name: "no url found for fresh db in shortener",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -358,7 +359,7 @@ func TestApp_handleUserGet(t *testing.T) {
 		{
 			name: "gets all user related urls",
 			fields: fields{
-				shortener:     shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 				authenticator: mockAuth,
 			},
 			args: args{
@@ -420,7 +421,7 @@ func TestApp_handlePing(t *testing.T) {
 		{
 			name: "returns 500 if connection is not ok",
 			fields: fields{
-				shortener: shortener.NewShortener("http://localhost:8080", mockDB),
+				shortener: shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
 			},
 			args: args{
 				w: fasthttp.AcquireResponse(),
@@ -441,6 +442,67 @@ func TestApp_handlePing(t *testing.T) {
 
 			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
 			assert.NoError(t, err, "GET request error")
+
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
+		})
+	}
+}
+
+func TestApp_handleDelete(t *testing.T) {
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+	type want struct {
+		statusCode int
+	}
+
+	request := acquireRequest(
+		fasthttp.MethodDelete, "http://localhost:8080/api/user/urls", `["1"]`, emptyHeaders)
+
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+	mockDB.On("Instance").Return(nil)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   want
+	}{
+		{
+			name: "happy path",
+			fields: fields{
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
+				authenticator: mockAuth,
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: request,
+			},
+			want: want{
+				statusCode: fasthttp.StatusAccepted,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "DELETE request error")
 
 			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
 		})

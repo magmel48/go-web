@@ -3,8 +3,10 @@ package userlinks
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/magmel48/go-web/internal/auth"
 	"github.com/magmel48/go-web/internal/db/links"
+	"strings"
 )
 
 // PostgresRepository is implementation of abstract Repository.
@@ -83,4 +85,29 @@ func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID a
 	}
 
 	return nil, nil
+}
+
+func (repository *PostgresRepository) DeleteLinks(ctx context.Context, deleteQueryItems []DeleteQueryItem) error {
+	query := `
+		UPDATE "links" AS l
+		SET "is_deleted" = true
+		FROM "user_links" AS ul WHERE
+	`
+
+	clauses := make([]string, len(deleteQueryItems))
+	for i := range deleteQueryItems {
+		clause := fmt.Sprintf(`l."short_id" = ANY ($%d) AND l."id" = ul."link_id" AND ul."user_id" = $%d`, 2*i+1, 2*i+2)
+		clauses[i] = clause
+	}
+
+	query += strings.Join(clauses, " OR ")
+
+	args := make([]interface{}, 0)
+	for _, el := range deleteQueryItems {
+		args = append(args, el.ShortIDs, *el.UserID)
+	}
+
+	_, err := repository.db.ExecContext(ctx, query, args...)
+
+	return err
 }

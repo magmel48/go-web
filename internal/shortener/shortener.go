@@ -5,18 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"github.com/magmel48/go-web/internal/auth"
+	"github.com/magmel48/go-web/internal/daemons"
 	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/db/links"
 	"github.com/magmel48/go-web/internal/db/userlinks"
 	"net/url"
 )
 
+var ErrDeleted = errors.New("the link is deleted")
+
 // Shortener makes links shorter.
 type Shortener struct {
+	ctx                 context.Context
 	prefix              string
 	database            db.DB
 	linksRepository     links.Repository
 	userLinksRepository userlinks.Repository
+	daemon              daemons.Daemon
 }
 
 type UrlsMap struct {
@@ -25,13 +30,19 @@ type UrlsMap struct {
 }
 
 // NewShortener creates new shortener.
-func NewShortener(prefix string, database db.DB) Shortener {
+func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener {
+	userLinksRepository := userlinks.NewPostgresRepository(database.Instance())
+
 	shortener := Shortener{
 		prefix:              prefix,
 		database:            database,
 		linksRepository:     links.NewPostgresRepository(database.Instance()),
-		userLinksRepository: userlinks.NewPostgresRepository(database.Instance()),
+		userLinksRepository: userLinksRepository,
+		daemon:              daemons.NewDeletingRecordsDaemon(ctx),
 	}
+
+	// starting deleting requests processing
+	go shortener.daemon.Run(userLinksRepository)
 
 	return shortener
 }
@@ -92,6 +103,10 @@ func (s Shortener) RestoreLong(ctx context.Context, shortID string) (string, err
 		return "", errors.New("not found")
 	}
 
+	if link.IsDeleted {
+		return link.OriginalURL, ErrDeleted
+	}
+
 	return link.OriginalURL, nil
 }
 
@@ -115,4 +130,8 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 	}
 
 	return result, nil
+}
+
+func (s Shortener) DeleteURLs(userID auth.UserID, shortIDs []string) {
+	s.daemon.EnqueueJob(daemons.QueryItem{UserID: userID, ShortIDs: shortIDs})
 }
