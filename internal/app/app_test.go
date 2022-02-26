@@ -259,9 +259,8 @@ func TestApp_handleGet(t *testing.T) {
 		r *fasthttp.Request
 	}
 	type want struct {
-		contentType  string
-		statusCode   int
-		shortenedURL string
+		contentType string
+		statusCode  int
 	}
 
 	mockAuth := &authmocks.Auth{}

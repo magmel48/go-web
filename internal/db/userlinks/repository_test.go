@@ -12,31 +12,6 @@ import (
 	"testing"
 )
 
-func TestNewPostgresRepository(t *testing.T) {
-	type args struct {
-		db *sql.DB
-	}
-
-	tests := []struct {
-		name string
-		args args
-		want *PostgresRepository
-	}{
-		{
-			name: "returns new instance of PostgresRepository",
-			want: &PostgresRepository{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewPostgresRepository(tt.args.db); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewPostgresRepository() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestPostgresRepository_Create(t *testing.T) {
 	type fields struct {
 		db *sql.DB
