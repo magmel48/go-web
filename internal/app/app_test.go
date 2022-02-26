@@ -80,8 +80,8 @@ func TestApp_handlePost(t *testing.T) {
 	db, sqlMock, _ := sqlmock.New()
 	mockDB.On("Instance").Return(db)
 
-	rows := sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1")
-	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(rows)
+	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1"))
 
 	malformedURLInBodyRequest := acquireRequest(
 		fasthttp.MethodPost, "http://localhost:8080", "test", emptyHeaders)
@@ -172,8 +172,8 @@ func TestApp_handleJSONPost(t *testing.T) {
 	db, sqlMock, _ := sqlmock.New()
 	mockDB.On("Instance").Return(db)
 
-	rows := sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1")
-	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(rows)
+	sqlMock.ExpectQuery(`INSERT INTO "links"`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1"))
 
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
@@ -274,8 +274,8 @@ func TestApp_handleGet(t *testing.T) {
 	db, sqlMock, _ := sqlmock.New()
 	mockDB.On("Instance").Return(db)
 
-	rows := sqlmock.NewRows([]string{"id", "short_id", "original_url"})
-	sqlMock.ExpectQuery(`SELECT "id", "short_id", "original_url" FROM "links"`).WillReturnRows(rows)
+	sqlMock.ExpectQuery(`SELECT "id", "short_id", "original_url" FROM "links"`).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "short_id", "original_url"}))
 
 	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/1", "", emptyHeaders)
 
@@ -346,9 +346,9 @@ func TestApp_handleUserGet(t *testing.T) {
 	db, sqlMock, _ := sqlmock.New()
 	mockDB.On("Instance").Return(db)
 
-	rows := sqlmock.NewRows([]string{"short_id", "original_url"}).AddRow("1", "https://google.com")
 	sqlMock.ExpectQuery(
-		`SELECT l."short_id", l."original_url" FROM "user_links"`).WillReturnRows(rows)
+		`SELECT l."short_id", l."original_url" FROM "user_links"`).WillReturnRows(
+		sqlmock.NewRows([]string{"short_id", "original_url"}).AddRow("1", "https://google.com"))
 
 	tests := []struct {
 		name   string

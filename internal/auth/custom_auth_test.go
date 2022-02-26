@@ -128,10 +128,7 @@ func TestCustomAuth_Encode(t *testing.T) {
 }
 
 func BenchmarkCustomAuth_Decode(b *testing.B) {
-	auth := CustomAuth{
-		algo:      TestAEAD{},
-		NonceFunc: func(_ int) ([]byte, error) { return []byte{1}, nil },
-	}
+	auth, _ := NewCustomAuth()
 
 	sequence := []byte{
 		77, 106, 90, 107, 77, 87, 70, 106, 77, 106, 69, 116, 78, 84, 100, 107, 78, 83, 48, 48, 77, 50, 74, 104,

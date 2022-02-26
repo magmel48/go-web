@@ -7,9 +7,9 @@ import (
 	"github.com/magmel48/go-web/internal/daemons/mocks"
 	"github.com/magmel48/go-web/internal/db"
 	"github.com/magmel48/go-web/internal/db/links"
-	linksmocks "github.com/magmel48/go-web/internal/db/links/mocks"
+	linkmocks "github.com/magmel48/go-web/internal/db/links/mocks"
 	"github.com/magmel48/go-web/internal/db/userlinks"
-	userlinksmocks "github.com/magmel48/go-web/internal/db/userlinks/mocks"
+	userlinkmocks "github.com/magmel48/go-web/internal/db/userlinks/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -25,11 +25,11 @@ func TestShortener_MakeShorter(t *testing.T) {
 		url string
 	}
 
-	linksRepository := linksmocks.Repository{}
+	linksRepository := linkmocks.Repository{}
 	linksRepository.On("Create", mock.Anything, mock.Anything, mock.Anything).Return(
 		&links.Link{ShortID: "1"}, nil)
 
-	userLinksRepository := userlinksmocks.Repository{}
+	userLinksRepository := userlinkmocks.Repository{}
 	userLinksRepository.On(
 		"FindByLinkID", mock.Anything, mock.Anything, mock.Anything).Return(&userlinks.UserLink{}, nil)
 
@@ -75,11 +75,11 @@ func TestShortener_RestoreLong(t *testing.T) {
 		id string
 	}
 
-	withLinksRepository := linksmocks.Repository{}
+	withLinksRepository := linkmocks.Repository{}
 	withLinksRepository.On("FindByShortID", mock.Anything, mock.Anything).Return(
 		&links.Link{ShortID: "1", OriginalURL: "https://google.com"}, nil)
 
-	withoutLinksRepository := linksmocks.Repository{}
+	withoutLinksRepository := linkmocks.Repository{}
 	withoutLinksRepository.On("FindByShortID", mock.Anything, mock.Anything).Return(nil, nil)
 
 	tests := []struct {

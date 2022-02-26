@@ -7,6 +7,7 @@ import (
 	"github.com/magmel48/go-web/internal/auth"
 	"reflect"
 	"regexp"
+	"strconv"
 	"testing"
 )
 
@@ -79,5 +80,26 @@ func TestPostgresRepository_Create(t *testing.T) {
 				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func BenchmarkPostgresRepository_DeleteLinks(b *testing.B) {
+	db, _, _ := sqlmock.New()
+	repository := PostgresRepository{db: db}
+
+	userID := "test_user_id"
+	shortIDs := make([]string, 10000)
+	for i := 0; i < 10000; i++ {
+		shortIDs[i] = strconv.Itoa(i + 1)
+	}
+
+	items := []DeleteQueryItem{
+		{UserID: &userID, ShortIDs: shortIDs},
+		{UserID: &userID, ShortIDs: shortIDs},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		repository.DeleteLinks(context.TODO(), items)
 	}
 }
