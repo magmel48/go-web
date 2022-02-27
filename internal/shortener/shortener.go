@@ -38,11 +38,11 @@ func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener 
 		database:            database,
 		linksRepository:     links.NewPostgresRepository(database.Instance()),
 		userLinksRepository: userLinksRepository,
-		daemon:              daemons.NewDeletingRecordsDaemon(ctx),
+		daemon:              daemons.NewDeletingRecordsDaemon(ctx, userLinksRepository),
 	}
 
 	// starting deleting requests processing
-	go shortener.daemon.Run(userLinksRepository)
+	go shortener.daemon.Run()
 
 	return shortener
 }

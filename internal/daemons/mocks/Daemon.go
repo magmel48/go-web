@@ -3,8 +3,7 @@
 package mocks
 
 import (
-	shortener "github.com/magmel48/go-web/internal/daemons"
-	userlinks "github.com/magmel48/go-web/internal/db/userlinks"
+	daemons "github.com/magmel48/go-web/internal/daemons"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -14,11 +13,11 @@ type Daemon struct {
 }
 
 // EnqueueJob provides a mock function with given fields: item
-func (_m *Daemon) EnqueueJob(item shortener.QueryItem) {
+func (_m *Daemon) EnqueueJob(item daemons.QueryItem) {
 	_m.Called(item)
 }
 
-// Run provides a mock function with given fields: userLinksRepository
-func (_m *Daemon) Run(userLinksRepository userlinks.Repository) {
-	_m.Called(userLinksRepository)
+// Run provides a mock function with given fields:
+func (_m *Daemon) Run() {
+	_m.Called()
 }
