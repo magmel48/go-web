@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -54,5 +55,31 @@ func TestDeletingRecordsDaemon_DeleteLinks(t *testing.T) {
 				t.Errorf("got = %v, want = %v", repositoryMock.Calls[0].Arguments[1], args)
 			}
 		})
+	}
+}
+
+func BenchmarkDeletingRecordsDaemon_DeleteLinks(b *testing.B) {
+	repository := &mocks.Repository{}
+	repository.On("DeleteLinks", mock.Anything, mock.Anything).Return(nil)
+
+	daemon := DeletingRecordsDaemon{
+		ctx:        context.TODO(),
+		repository: repository,
+		items:      make(chan QueryItem, 100),
+	}
+
+	userID := "test_user_id"
+	shortIDs := make([]string, 1000000)
+	for i := 0; i < 1000000; i++ {
+		shortIDs[i] = strconv.Itoa(i + 1)
+	}
+
+	for i := 0; i < maxBatchSizeToProcess; i++ {
+		daemon.items <- QueryItem{UserID: &userID, ShortIDs: shortIDs}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		daemon.DeleteLinks()
 	}
 }
