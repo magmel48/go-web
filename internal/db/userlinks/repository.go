@@ -68,7 +68,6 @@ func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID a
 
 	userLink := UserLink{}
 	if rows.Next() {
-		userLink := UserLink{}
 		err := rows.Scan(&userLink.ID, &userLink.UserID, &userLink.LinkID)
 		if err != nil {
 			return nil, err
