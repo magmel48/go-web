@@ -149,3 +149,35 @@ func BenchmarkCustomAuth_Encode(b *testing.B) {
 		auth.Encode(&userID)
 	}
 }
+
+func TestDefaultNonceFunc(t *testing.T) {
+	type args struct {
+		nonceSize int
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "should generate random nonce with specified length",
+			args:    args{nonceSize: 32},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DefaultNonceFunc(tt.args.nonceSize)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DefaultNonceFunc() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if len(got) != tt.args.nonceSize {
+				t.Errorf("DefaultNonceFunc() returned wrong bytes length sequence")
+			}
+		})
+	}
+}
