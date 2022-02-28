@@ -13,6 +13,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttputil"
 	"net"
+	"regexp"
 	"testing"
 )
 
@@ -245,6 +246,97 @@ func TestApp_handleJSONPost(t *testing.T) {
 				assert.NoError(t, err, "unmarshal response error")
 				assert.Equal(t, tt.want.result, result)
 			}
+		})
+	}
+}
+
+func TestApp_handleBatchPost(t *testing.T) {
+	correlationID := "test_correlation_id"
+	originalURL := "https://google.com"
+	shortURL := "http://localhost:8080/1"
+
+	type fields struct {
+		shortener     shortener.Shortener
+		authenticator auth.Auth
+	}
+	type args struct {
+		w *fasthttp.Response
+		r *fasthttp.Request
+	}
+	type want struct {
+		contentType string
+		statusCode  int
+		result      []BatchResultElement
+	}
+
+	mockAuth := &authmocks.Auth{}
+	mockAuth.On("Decode", mock.Anything).Return(nil, nil)
+	mockAuth.On("Encode", mock.Anything).Return(nil)
+
+	mockDB := &dbmocks.DB{}
+	mockDB.On("CreateSchema").Return(nil)
+
+	db, sqlMock, _ := sqlmock.New()
+	mockDB.On("Instance").Return(db)
+
+	sqlMock.ExpectBegin().WillReturnError(nil)
+	sqlMock.ExpectPrepare(
+		regexp.QuoteMeta(`INSERT INTO "links" ("short_id", "original_url") VALUES($1, $2) RETURNING "id", "short_id"`))
+	sqlMock.ExpectPrepare(
+		regexp.QuoteMeta(`SELECT "id", "short_id" FROM "links" WHERE "original_url" = $1 LIMIT 1`))
+	selectPrepare := sqlMock.ExpectPrepare(
+		regexp.QuoteMeta(`SELECT "id", "short_id" FROM "links" WHERE "original_url" = $1 LIMIT 1`))
+
+	selectPrepare.ExpectQuery().WillReturnRows(sqlmock.NewRows([]string{"id", "short_id"}).AddRow(1, "1"))
+	sqlMock.ExpectCommit()
+
+	body, _ := json.Marshal(
+		[]BatchPayloadElement{{CorrelationID: correlationID, OriginalURL: originalURL}})
+	request := acquireRequest(
+		fasthttp.MethodPost, "http://localhost:8080/api/shorten/batch", string(body), emptyHeaders)
+
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   want
+	}{
+		{
+			name: "happy path",
+			fields: fields{
+				shortener:     shortener.NewShortener(context.TODO(), "http://localhost:8080", mockDB),
+				authenticator: mockAuth,
+			},
+			args: args{
+				w: fasthttp.AcquireResponse(),
+				r: request,
+			},
+			want: want{
+				contentType: "application/json; charset=utf-8",
+				statusCode:  fasthttp.StatusCreated,
+				result:      []BatchResultElement{{CorrelationID: correlationID, ShortURL: shortURL}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := App{
+				shortener:     tt.fields.shortener,
+				authenticator: tt.fields.authenticator,
+			}
+
+			err := serve(app.HTTPHandler(), tt.args.r, tt.args.w)
+			assert.NoError(t, err, "POST batch request error")
+
+			assert.Equal(t, tt.want.statusCode, tt.args.w.StatusCode())
+			assert.Equal(t, tt.want.contentType, string(tt.args.w.Header.Peek("Content-Type")))
+
+			var result []BatchResultElement
+			body := tt.args.w.Body()
+			err = json.Unmarshal(body, &result)
+			assert.NoError(t, err, "unmarshal response error")
+			assert.Equal(t, tt.want.result, result)
 		})
 	}
 }
