@@ -11,6 +11,9 @@ import (
 	"github.com/valyala/fasthttp"
 	"github.com/vardius/gorouter/v4"
 	routercontext "github.com/vardius/gorouter/v4/context"
+	"os"
+	"runtime"
+	"runtime/pprof"
 )
 
 // App makes urls shorter.
@@ -69,6 +72,7 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router.GET("/ping", app.handlePing)
 	router.GET("/{id}", app.handleGet)
 	router.DELETE("/api/user/urls", app.handleDelete)
+	router.GET("/internal/pprof", app.pprof)
 
 	return cookiesHandler(app.authenticator)(
 		decompressHandler( // only for reading request
@@ -261,4 +265,33 @@ func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
 
 	go app.shortener.DeleteURLs(userID, payload)
 	ctx.SetStatusCode(fasthttp.StatusAccepted)
+}
+
+// pprof is using for internal purposes to retrieve current CPU and memory profiles.
+func (app App) pprof(ctx *fasthttp.RequestCtx) {
+	// CPU first
+	fcpu, err := os.Create("profiles/cpu.profile")
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+	defer fcpu.Close()
+	if err := pprof.StartCPUProfile(fcpu); err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+	defer pprof.StopCPUProfile()
+
+	// then memory
+	fmem, err := os.Create("profiles/mem.profile")
+	if err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
+	defer fmem.Close()
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(fmem); err != nil {
+		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+		return
+	}
 }
