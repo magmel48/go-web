@@ -6,6 +6,7 @@ import (
 	"github.com/magmel48/go-web/internal/db/links"
 )
 
+// UserLink is representing database table and a user link DTO at the same time.
 type UserLink struct {
 	ID     int
 	UserID auth.UserID
@@ -13,11 +14,13 @@ type UserLink struct {
 	Link   links.Link
 }
 
+// DeleteQueryItem is specifying deleting intention from the UserID.
 type DeleteQueryItem struct {
 	UserID   auth.UserID
 	ShortIDs []string
 }
 
+// Repository is common interface for a work with user links implementation.
 //go:generate mockery --name=Repository
 type Repository interface {
 	Create(ctx context.Context, userID auth.UserID, linkID int) error

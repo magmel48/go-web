@@ -6,6 +6,7 @@ import (
 
 const maxBatchSizeToProcess = 5
 
+// QueryItem is what daemon will accept as payload for a new job.
 type QueryItem struct {
 	UserID   auth.UserID
 	ShortIDs []string

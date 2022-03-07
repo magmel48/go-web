@@ -12,10 +12,12 @@ type PostgresRepository struct {
 	db *sql.DB
 }
 
+// NewPostgresRepository returns new PostgresRepository for working with links.
 func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
+// Create creates new shorter link by specified originalURL.
 func (repository *PostgresRepository) Create(ctx context.Context, shortID string, originalURL string) (*Link, error) {
 	if shortID == "" {
 		linksCount, _ := repository.getNextShortID(ctx)
@@ -45,6 +47,7 @@ func (repository *PostgresRepository) Create(ctx context.Context, shortID string
 	return &link, err
 }
 
+// CreateBatch creates many shorter links by specified originalURLs.
 func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) {
 	result := make([]Link, len(originalURLs))
 	linksCount, _ := repository.getNextShortID(ctx)
@@ -110,6 +113,7 @@ func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalU
 	return result, nil
 }
 
+// FindByShortID finds originalURL and related info by specified short link identifier.
 func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID string) (*Link, error) {
 	rows, err := repository.db.QueryContext(
 		ctx, `SELECT "id", "short_id", "original_url", "is_deleted" FROM "links" WHERE "short_id" = $1 LIMIT 1`, shortID)
@@ -143,6 +147,7 @@ func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID
 	return nil, nil
 }
 
+// getNextShortID returns next shortID that can be used for a new shorter link.
 func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, error) {
 	count := 0
 

@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestDeletingRecordsDaemon_DeleteLinks(t *testing.T) {
+func TestDeletingRecordsDaemon_deleteLinks(t *testing.T) {
 	type fields struct {
 		ctx        context.Context
 		repository userlinks.Repository
@@ -44,7 +44,7 @@ func TestDeletingRecordsDaemon_DeleteLinks(t *testing.T) {
 			}
 
 			daemon.EnqueueJob(QueryItem{UserID: &userID, ShortIDs: []string{shortID}})
-			daemon.DeleteLinks()
+			daemon.deleteLinks()
 
 			assert.Equal(t, len(repositoryMock.Calls), 1)
 			assert.Equal(t, repositoryMock.Calls[0].Method, "DeleteLinks")
@@ -80,6 +80,6 @@ func BenchmarkDeletingRecordsDaemon_DeleteLinks(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		daemon.DeleteLinks()
+		daemon.deleteLinks()
 	}
 }

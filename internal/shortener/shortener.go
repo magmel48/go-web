@@ -12,6 +12,7 @@ import (
 	"net/url"
 )
 
+// ErrDeleted is using for notifying clients about the fact the link is already deleted.
 var ErrDeleted = errors.New("the link is deleted")
 
 // Shortener makes links shorter.
@@ -24,6 +25,7 @@ type Shortener struct {
 	daemon              daemons.Daemon
 }
 
+// UrlsMap is part of response when user asks for their links stored previously.
 type UrlsMap struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
@@ -47,10 +49,12 @@ func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener 
 	return shortener
 }
 
+// IsStorageAvailable checks if storage (database) available.
 func (s Shortener) IsStorageAvailable(ctx context.Context) bool {
 	return s.database.CheckConnection(ctx)
 }
 
+// MakeShorterBatch makes shorter links by specified batch payload.
 func (s Shortener) MakeShorterBatch(ctx context.Context, originalURLs []string) ([]string, error) {
 	linkRecords, err := s.linksRepository.CreateBatch(ctx, originalURLs)
 	if err != nil {
@@ -132,6 +136,7 @@ func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]Urls
 	return result, nil
 }
 
+// DeleteURLs is registering links deletion intentions.
 func (s Shortener) DeleteURLs(userID auth.UserID, shortIDs []string) {
 	s.daemon.EnqueueJob(daemons.QueryItem{UserID: userID, ShortIDs: shortIDs})
 }

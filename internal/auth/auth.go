@@ -16,6 +16,7 @@ func NewUserID() UserID {
 	return &id
 }
 
+// Auth is common interface for authentication implementation of helpers that can encode and decode a user identifier.
 //go:generate mockery --name=Auth
 type Auth interface {
 	Decode(sequence []byte) (UserID, error)

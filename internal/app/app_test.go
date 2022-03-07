@@ -424,7 +424,7 @@ func TestApp_handleUserGet(t *testing.T) {
 		result      string
 	}
 
-	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/user/urls", "", emptyHeaders)
+	request := acquireRequest(fasthttp.MethodGet, "http://localhost:8080/api/user/urls", "", emptyHeaders)
 
 	userID := "user_id_1"
 

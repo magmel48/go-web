@@ -14,6 +14,7 @@ type PostgresRepository struct {
 	db *sql.DB
 }
 
+// NewPostgresRepository returns new PostgresRepository for working with user links.
 func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }

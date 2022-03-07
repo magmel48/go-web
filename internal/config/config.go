@@ -9,12 +9,18 @@ import (
 var defaultProtocol = "http://"
 
 var (
-	Address          string
-	AppDomain        string
+	// Address where the server starts their job
+	Address string
+	// AppDomain is parsed from Address - where the server starts their job
+	AppDomain string
+	// BaseShortenerURL is what will be put in short link as domain ({domain}/{short_link_id})
 	BaseShortenerURL string
-	FilePath         string
-	SecretKey        string
-	DatabaseDSN      string
+	// FilePath is deprecated, previously was using for storing backup
+	FilePath string
+	// SecretKey is secret character sequence that is using for encoding/decoding user identifiers
+	SecretKey string
+	// DatabaseDSN is database connection string
+	DatabaseDSN string
 )
 
 // Parse parses flags and gets default values for them from environment variables. Hides details of envs ingestion.

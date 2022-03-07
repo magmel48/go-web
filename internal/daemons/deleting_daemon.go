@@ -14,6 +14,7 @@ type DeletingRecordsDaemon struct {
 	items      chan QueryItem
 }
 
+// NewDeletingRecordsDaemon create new daemon that deletes links asynchronously.
 func NewDeletingRecordsDaemon(ctx context.Context, repository userlinks.Repository) *DeletingRecordsDaemon {
 	return &DeletingRecordsDaemon{
 		ctx:        ctx,
@@ -22,10 +23,12 @@ func NewDeletingRecordsDaemon(ctx context.Context, repository userlinks.Reposito
 	}
 }
 
+// EnqueueJob enqueues new items (links) for deletion.
 func (daemon *DeletingRecordsDaemon) EnqueueJob(item QueryItem) {
 	daemon.items <- item
 }
 
+// Run runs links deletion.
 func (daemon *DeletingRecordsDaemon) Run() {
 	ticker := time.NewTicker(5 * time.Second)
 
@@ -39,12 +42,13 @@ func (daemon *DeletingRecordsDaemon) Run() {
 
 		case <-ticker.C:
 			log.Println("processing new requests for links deletion")
-			daemon.DeleteLinks()
+			daemon.deleteLinks()
 		}
 	}
 }
 
-func (daemon *DeletingRecordsDaemon) DeleteLinks() {
+// deleteLinks deletes links by batches.
+func (daemon *DeletingRecordsDaemon) deleteLinks() {
 	items := make([]userlinks.DeleteQueryItem, 0)
 	for i := 0; i < maxBatchSizeToProcess; i++ {
 		select {
