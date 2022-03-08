@@ -15,10 +15,17 @@ go test ./... -coverprofile coverage.out
 go tool cover -html=coverage.out -o coverage.html
 ```
 
-## Pprof
+## Benchmarks
 
 ```shell
-go test -bench=. -mempofile=profiles/base.pprof
+DATABASE_DSN="postgres://postgres:Qwerty\!234@localhost:5432/yandex-diploma?sslmode=disable" go test ./... -bench=.
+```
+
+## Pprof
+
+Run per each package separately:
+```shell
+DATABASE_DSN="postgres://postgres:Qwerty\!234@localhost:5432/yandex-diploma?sslmode=disable" go test -bench=. -mempofile=profiles/base.pprof
 ```
 
 ```shell

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/magmel48/go-web/internal/config"
 	"log"
@@ -37,7 +38,7 @@ func (db *SQLDB) Connect() error {
 		return err
 	}
 
-	return nil
+	return errors.New("no database config specified")
 }
 
 // CheckConnection checks if a new connection to database can be potentially opened

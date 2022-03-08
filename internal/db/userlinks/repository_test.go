@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/magmel48/go-web/internal/auth"
+	"github.com/magmel48/go-web/internal/benchmarking"
 	"github.com/magmel48/go-web/internal/db/links"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -171,15 +173,11 @@ func TestPostgresRepository_FindByLinkID(t *testing.T) {
 }
 
 func BenchmarkPostgresRepository_List(b *testing.B) {
-	db, sqlMock, _ := sqlmock.New()
-	repository := PostgresRepository{db: db}
+	db, err := benchmarking.DBConnect()
+	require.NoError(b, err, "database connection error")
 
+	repository := NewPostgresRepository(db)
 	userID := "test_user_id"
-	rows := sqlMock.NewRows([]string{"short_id", "original_url"})
-
-	for i := 0; i < 1000000; i++ {
-		rows.AddRow(strconv.Itoa(i), strconv.Itoa(i))
-	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -188,8 +186,10 @@ func BenchmarkPostgresRepository_List(b *testing.B) {
 }
 
 func BenchmarkPostgresRepository_DeleteLinks(b *testing.B) {
-	db, _, _ := sqlmock.New()
-	repository := PostgresRepository{db: db}
+	db, err := benchmarking.DBConnect()
+	require.NoError(b, err, "database connection error")
+
+	repository := NewPostgresRepository(db)
 
 	userID := "test_user_id"
 	shortIDs := make([]string, 1000000)

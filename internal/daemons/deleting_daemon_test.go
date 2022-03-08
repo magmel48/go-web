@@ -2,10 +2,12 @@ package daemons
 
 import (
 	"context"
+	"github.com/magmel48/go-web/internal/benchmarking"
 	"github.com/magmel48/go-web/internal/db/userlinks"
 	"github.com/magmel48/go-web/internal/db/userlinks/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"reflect"
 	"strconv"
 	"testing"
@@ -59,8 +61,10 @@ func TestDeletingRecordsDaemon_deleteLinks(t *testing.T) {
 }
 
 func BenchmarkDeletingRecordsDaemon_DeleteLinks(b *testing.B) {
-	repository := &mocks.Repository{}
-	repository.On("DeleteLinks", mock.Anything, mock.Anything).Return(nil)
+	db, err := benchmarking.DBConnect()
+	require.NoError(b, err, "database connection error")
+
+	repository := userlinks.NewPostgresRepository(db)
 
 	daemon := DeletingRecordsDaemon{
 		ctx:        context.TODO(),
@@ -69,8 +73,8 @@ func BenchmarkDeletingRecordsDaemon_DeleteLinks(b *testing.B) {
 	}
 
 	userID := "test_user_id"
-	shortIDs := make([]string, 1000000)
-	for i := 0; i < 1000000; i++ {
+	shortIDs := make([]string, 10000)
+	for i := 0; i < 10000; i++ {
 		shortIDs[i] = strconv.Itoa(i + 1)
 	}
 
