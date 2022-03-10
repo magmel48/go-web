@@ -25,7 +25,7 @@ DATABASE_DSN="postgres://postgres:Qwerty\!234@localhost:5432/yandex-diploma?sslm
 
 Run per each package separately:
 ```shell
-DATABASE_DSN="postgres://postgres:Qwerty\!234@localhost:5432/yandex-diploma?sslmode=disable" go test -bench=. -mempofile=profiles/base.pprof
+DATABASE_DSN="postgres://postgres:Qwerty\!234@localhost:5432/yandex-diploma?sslmode=disable" go test -bench=. -memprofile=profiles/base.pprof
 ```
 
 ```shell
