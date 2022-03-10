@@ -106,9 +106,10 @@ func (repository *PostgresRepository) DeleteLinks(ctx context.Context, deleteQue
 
 	query += strings.Join(clauses, " OR ")
 
-	args := make([]interface{}, 0)
-	for _, el := range deleteQueryItems {
-		args = append(args, el.ShortIDs, *el.UserID)
+	args := make([]interface{}, len(deleteQueryItems)*2)
+	for i, el := range deleteQueryItems {
+		args[2*i] = el.ShortIDs
+		args[2*i+1] = *el.UserID
 	}
 
 	_, err := repository.db.ExecContext(ctx, query, args...)
