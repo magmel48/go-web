@@ -65,13 +65,13 @@ func NewApp(ctx context.Context, baseURL string) App {
 // HTTPHandler handles http requests.
 func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 	router := gorouter.NewFastHTTPRouter()
-	router.POST("/", app.handlePost)
-	router.POST("/api/shorten", app.handleJSONPost)
-	router.POST("/api/shorten/batch", app.handleBatchPost)
-	router.GET("/api/user/urls", app.handleUserGet)
-	router.GET("/ping", app.handlePing)
-	router.GET("/{id}", app.handleGet)
-	router.DELETE("/api/user/urls", app.handleDelete)
+	router.POST("/", app.HandlePost)
+	router.POST("/api/shorten", app.HandleJSONPost)
+	router.POST("/api/shorten/batch", app.HandleBatchPost)
+	router.GET("/api/user/urls", app.HandleUserGet)
+	router.GET("/ping", app.HandlePing)
+	router.GET("/{id}", app.HandleGet)
+	router.DELETE("/api/user/urls", app.HandleDelete)
 	router.GET("/internal/pprof", app.pprof)
 
 	return cookiesHandler(app.authenticator)(
@@ -80,8 +80,8 @@ func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) {
 				router.HandleFastHTTP, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
 }
 
-// handlePost handles POST on "/" route - creates new short link.
-func (app App) handlePost(ctx *fasthttp.RequestCtx) {
+// HandlePost handles POST on "/" route - creates new short link.
+func (app App) HandlePost(ctx *fasthttp.RequestCtx) {
 	if ctx.Request.Body() == nil {
 		ctx.Error("empty request body", fasthttp.StatusBadRequest)
 		return
@@ -111,8 +111,8 @@ func (app App) handlePost(ctx *fasthttp.RequestCtx) {
 	ctx.SetBody([]byte(shortURL))
 }
 
-// handleJSONPost does the same as handlePost, but accepts JSON payload and available on "/api/shorten".
-func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
+// HandleJSONPost does the same as handlePost, but accepts JSON payload and available on "/api/shorten".
+func (app App) HandleJSONPost(ctx *fasthttp.RequestCtx) {
 	var payload ShortenPayload
 
 	body := ctx.Request.Body()
@@ -154,8 +154,8 @@ func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) {
 	ctx.SetBody(response)
 }
 
-// handleBatchPost accepts multiple JSON records for making shorter links, available on "/api/shorten/batch".
-func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
+// HandleBatchPost accepts multiple JSON records for making shorter links, available on "/api/shorten/batch".
+func (app App) HandleBatchPost(ctx *fasthttp.RequestCtx) {
 	var payload []BatchPayloadElement
 
 	body := ctx.Request.Body()
@@ -191,8 +191,8 @@ func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) {
 	ctx.SetBody(response)
 }
 
-// handleGet handles GET on "/api/user/urls" and returns original link from specified identifier.
-func (app App) handleGet(ctx *fasthttp.RequestCtx) {
+// HandleGet handles GET on "/api/user/urls" and returns original link from specified identifier.
+func (app App) HandleGet(ctx *fasthttp.RequestCtx) {
 	params := ctx.UserValue("params").(routercontext.Params)
 	id := params.Value("id")
 
@@ -211,8 +211,8 @@ func (app App) handleGet(ctx *fasthttp.RequestCtx) {
 	ctx.SetStatusCode(fasthttp.StatusTemporaryRedirect)
 }
 
-// handleUserGet handles GET on "/api/user/urls" and returns all links from the user.
-func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
+// HandleUserGet handles GET on "/api/user/urls" and returns all links from the user.
+func (app App) HandleUserGet(ctx *fasthttp.RequestCtx) {
 	userID, err := getUserID(ctx, app.authenticator)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
@@ -239,15 +239,15 @@ func (app App) handleUserGet(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-// handlePing handles GET on "/ping" and checks database availability.
-func (app App) handlePing(ctx *fasthttp.RequestCtx) {
+// HandlePing handles GET on "/ping" and checks database availability.
+func (app App) HandlePing(ctx *fasthttp.RequestCtx) {
 	if !app.shortener.IsStorageAvailable(ctx) {
 		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 	}
 }
 
-// handleDelete handles DELETE on "/api/user/urls" and asynchronously deletes specified links.
-func (app App) handleDelete(ctx *fasthttp.RequestCtx) {
+// HandleDelete handles DELETE on "/api/user/urls" and asynchronously deletes specified links.
+func (app App) HandleDelete(ctx *fasthttp.RequestCtx) {
 	userID, err := getUserID(ctx, app.authenticator)
 	if err != nil {
 		ctx.Error(err.Error(), fasthttp.StatusInternalServerError)

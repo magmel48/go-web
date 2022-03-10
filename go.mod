@@ -6,6 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.14.1
+	github.com/rs/zerolog v1.15.0
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasthttp v1.31.0
 	github.com/vardius/gorouter/v4 v4.5.1
