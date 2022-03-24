@@ -126,3 +126,58 @@ func TestCustomAuth_Encode(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkCustomAuth_Decode(b *testing.B) {
+	auth, _ := NewCustomAuth()
+	sequence := []byte{
+		77, 106, 90, 107, 77, 87, 70, 106, 77, 106, 69, 116, 78, 84, 100, 107, 78, 83, 48, 48, 77, 50, 74, 104,
+		76, 87, 73, 121, 90, 106, 99, 116, 77, 68, 104, 107, 77, 122, 89, 122, 77, 84, 66, 104, 89, 84, 65, 51,
+		65, 81}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		auth.Decode(sequence)
+	}
+}
+
+func BenchmarkCustomAuth_Encode(b *testing.B) {
+	auth, _ := NewCustomAuth()
+	userID := "26d1ac21-57d5-43ba-b2f7-08d36310aa07"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		auth.Encode(&userID)
+	}
+}
+
+func TestDefaultNonceFunc(t *testing.T) {
+	type args struct {
+		nonceSize int
+	}
+
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "should generate random nonce with specified length",
+			args:    args{nonceSize: 32},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DefaultNonceFunc(tt.args.nonceSize)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DefaultNonceFunc() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if len(got) != tt.args.nonceSize {
+				t.Errorf("DefaultNonceFunc() returned wrong bytes length sequence")
+			}
+		})
+	}
+}

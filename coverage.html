@@ -1,0 +1,1049 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>app: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/magmel48/go-web/internal/app/app.go (66.7%)</option>
+				
+				<option value="file1">github.com/magmel48/go-web/internal/app/middlewares.go (44.4%)</option>
+				
+				<option value="file2">github.com/magmel48/go-web/internal/auth/auth.go (0.0%)</option>
+				
+				<option value="file3">github.com/magmel48/go-web/internal/auth/custom_auth.go (63.6%)</option>
+				
+				<option value="file4">github.com/magmel48/go-web/internal/daemons/deleting_daemon.go (41.2%)</option>
+				
+				<option value="file5">github.com/magmel48/go-web/internal/db/links/repository.go (22.8%)</option>
+				
+				<option value="file6">github.com/magmel48/go-web/internal/db/userlinks/repository.go (55.8%)</option>
+				
+				<option value="file7">github.com/magmel48/go-web/internal/shortener/shortener.go (34.9%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package app
+
+import (
+        "context"
+        "encoding/json"
+        "errors"
+        "github.com/magmel48/go-web/internal/auth"
+        "github.com/magmel48/go-web/internal/db"
+        "github.com/magmel48/go-web/internal/db/links"
+        "github.com/magmel48/go-web/internal/shortener"
+        "github.com/valyala/fasthttp"
+        "github.com/vardius/gorouter/v4"
+        routercontext "github.com/vardius/gorouter/v4/context"
+)
+
+// App makes urls shorter.
+type App struct {
+        shortener     shortener.Shortener
+        authenticator auth.Auth
+}
+
+// ShortenPayload represents payload of a request to /api/shorten.
+type ShortenPayload struct {
+        URL string `json:"url"`
+}
+
+// ShortenResult represents response from /api/shorten.
+type ShortenResult struct {
+        Result string `json:"result"`
+}
+
+// BatchPayloadElement is one element from array from payload of a request to /api/shorten/batch.
+type BatchPayloadElement struct {
+        CorrelationID string `json:"correlation_id"`
+        OriginalURL   string `json:"original_url"`
+}
+
+// BatchResultElement is one element from array from response from /api/shorten/batch.
+type BatchResultElement struct {
+        CorrelationID string `json:"correlation_id"`
+        ShortURL      string `json:"short_url"`
+}
+
+// NewApp creates new app that handles requests for making url shorter.
+func NewApp(ctx context.Context, baseURL string) App <span class="cov0" title="0">{
+        authenticator, err := auth.NewCustomAuth()
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov0" title="0">database := db.SQLDB{}
+        if err := database.CreateSchema(); err != nil </span><span class="cov0" title="0">{
+                panic(err)</span>
+        }
+
+        <span class="cov0" title="0">return App{
+                shortener:     shortener.NewShortener(ctx, baseURL, &amp;database),
+                authenticator: authenticator,
+        }</span>
+}
+
+// HTTPHandler handles http requests.
+func (app App) HTTPHandler() func(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        router := gorouter.NewFastHTTPRouter()
+        router.POST("/", app.handlePost)
+        router.POST("/api/shorten", app.handleJSONPost)
+        router.POST("/api/shorten/batch", app.handleBatchPost)
+        router.GET("/user/urls", app.handleUserGet)
+        router.GET("/ping", app.handlePing)
+        router.GET("/{id}", app.handleGet)
+        router.DELETE("/api/user/urls", app.handleDelete)
+
+        return cookiesHandler(app.authenticator)(
+                decompressHandler( // only for reading request
+                        fasthttp.CompressHandlerBrotliLevel( // only for writing response
+                                router.HandleFastHTTP, fasthttp.CompressBrotliBestSpeed, fasthttp.CompressBestSpeed)))
+}</span>
+
+func (app App) handlePost(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        if ctx.Request.Body() == nil </span><span class="cov0" title="0">{
+                ctx.Error("empty request body", fasthttp.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">userID, err := getUserID(ctx, app.authenticator)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">body := string(ctx.Request.Body())
+        shortURL, err := app.shortener.MakeShorter(ctx, body, userID)
+
+        if err != nil </span><span class="cov8" title="1">{
+                if !errors.Is(err, links.ErrConflict) </span><span class="cov8" title="1">{
+                        ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+                        return
+                }</span>
+
+                <span class="cov0" title="0">ctx.SetStatusCode(fasthttp.StatusConflict)</span>
+        } else<span class="cov8" title="1"> {
+                ctx.SetStatusCode(fasthttp.StatusCreated)
+        }</span>
+
+        <span class="cov8" title="1">ctx.SetContentType("text/plain; charset=utf-8")
+        ctx.SetBody([]byte(shortURL))</span>
+}
+
+func (app App) handleJSONPost(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        var payload ShortenPayload
+
+        body := ctx.Request.Body()
+        err := json.Unmarshal(body, &amp;payload)
+        if err != nil </span><span class="cov8" title="1">{
+                ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">userID, err := getUserID(ctx, app.authenticator)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">shortURL, err := app.shortener.MakeShorter(ctx, payload.URL, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                if !errors.Is(err, links.ErrConflict) </span><span class="cov0" title="0">{
+                        ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+                        return
+                }</span>
+
+                <span class="cov0" title="0">ctx.SetStatusCode(fasthttp.StatusConflict)</span>
+        } else<span class="cov8" title="1"> {
+                ctx.SetStatusCode(fasthttp.StatusCreated)
+        }</span>
+
+        <span class="cov8" title="1">result := ShortenResult{
+                Result: shortURL,
+        }
+
+        response, err := json.Marshal(result)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error("json marshal error", fasthttp.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">ctx.SetContentType("application/json; charset=utf-8")
+        ctx.SetBody(response)</span>
+}
+
+func (app App) handleBatchPost(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        var payload []BatchPayloadElement
+
+        body := ctx.Request.Body()
+        err := json.Unmarshal(body, &amp;payload)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">originalURLs := make([]string, len(payload))
+        for i, el := range payload </span><span class="cov8" title="1">{
+                originalURLs[i] = el.OriginalURL
+        }</span>
+
+        <span class="cov8" title="1">shortURLs, err := app.shortener.MakeShorterBatch(ctx, originalURLs)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+        }</span>
+
+        <span class="cov8" title="1">result := make([]BatchResultElement, len(payload))
+        for i, el := range shortURLs </span><span class="cov8" title="1">{
+                result[i] = BatchResultElement{CorrelationID: payload[i].CorrelationID, ShortURL: el}
+        }</span>
+
+        <span class="cov8" title="1">response, err := json.Marshal(result)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error("json marshal error", fasthttp.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">ctx.SetContentType("application/json; charset=utf-8")
+        ctx.SetStatusCode(fasthttp.StatusCreated)
+        ctx.SetBody(response)</span>
+}
+
+func (app App) handleGet(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        params := ctx.UserValue("params").(routercontext.Params)
+        id := params.Value("id")
+
+        initialURL, err := app.shortener.RestoreLong(ctx, id)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, shortener.ErrDeleted) </span><span class="cov0" title="0">{
+                        ctx.SetStatusCode(fasthttp.StatusGone)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">ctx.Error("initial version of the link is not found", fasthttp.StatusBadRequest)
+                return</span>
+        }
+
+        <span class="cov0" title="0">ctx.Response.Header.Set("Location", initialURL)
+        ctx.SetStatusCode(fasthttp.StatusTemporaryRedirect)</span>
+}
+
+func (app App) handleUserGet(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        userID, err := getUserID(ctx, app.authenticator)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">result, err := app.shortener.GetUserLinks(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">if len(result) == 0 </span><span class="cov0" title="0">{
+                ctx.SetStatusCode(fasthttp.StatusNoContent)
+        }</span> else<span class="cov8" title="1"> {
+                response, err := json.Marshal(result)
+                if err != nil </span><span class="cov0" title="0">{
+                        ctx.Error("json marshal error", fasthttp.StatusBadRequest)
+                        return
+                }</span>
+
+                <span class="cov8" title="1">ctx.SetContentType("application/json; charset=utf-8")
+                ctx.SetBody(response)</span>
+        }
+}
+
+func (app App) handlePing(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        if !app.shortener.IsStorageAvailable(ctx) </span><span class="cov8" title="1">{
+                ctx.SetStatusCode(fasthttp.StatusInternalServerError)
+        }</span>
+}
+
+func (app App) handleDelete(ctx *fasthttp.RequestCtx) <span class="cov8" title="1">{
+        userID, err := getUserID(ctx, app.authenticator)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error(err.Error(), fasthttp.StatusInternalServerError)
+                return
+        }</span>
+
+        <span class="cov8" title="1">var payload []string
+
+        body := ctx.Request.Body()
+        err = json.Unmarshal(body, &amp;payload)
+        if err != nil </span><span class="cov0" title="0">{
+                ctx.Error("wrong payload format", fasthttp.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">go app.shortener.DeleteURLs(userID, payload)
+        ctx.SetStatusCode(fasthttp.StatusAccepted)</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package app
+
+import (
+        "github.com/magmel48/go-web/internal/auth"
+        "github.com/valyala/fasthttp"
+        "log"
+)
+
+// decompressHandler reads compressed request payload and decodes it.
+func decompressHandler(h fasthttp.RequestHandler) fasthttp.RequestHandler <span class="cov8" title="1">{
+        return func(ctx *fasthttp.RequestCtx) </span><span class="cov8" title="1">{
+                contentEncoding := ctx.Request.Header.Peek("Content-Encoding")
+                switch string(contentEncoding) </span>{
+                case "gzip":<span class="cov0" title="0">
+                        body, err := ctx.Request.BodyGunzip()
+                        if err != nil </span><span class="cov0" title="0">{
+                                ctx.Error(err.Error(), fasthttp.StatusBadRequest)
+                                return
+                        }</span>
+
+                        <span class="cov0" title="0">ctx.Request.SetBody(body)</span>
+                }
+
+                <span class="cov8" title="1">h(ctx)</span>
+        }
+}
+
+// cookiesHandler sets and validates proper cookies.
+func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fasthttp.RequestHandler <span class="cov8" title="1">{
+        return func(h fasthttp.RequestHandler) fasthttp.RequestHandler </span><span class="cov8" title="1">{
+                return func(ctx *fasthttp.RequestCtx) </span><span class="cov8" title="1">{
+                        if authenticator != nil </span><span class="cov8" title="1">{
+                                _, err := getUserID(ctx, authenticator)
+
+                                // sets cookie if it's not valid (empty or wrong encoded)
+                                if err != nil </span><span class="cov0" title="0">{
+                                        log.Println("user session invalidation error", err)
+
+                                        userID := auth.NewUserID()
+                                        userToken, _ := authenticator.Encode(userID)
+
+                                        cookie := fasthttp.Cookie{}
+                                        cookie.SetKey("session")
+                                        cookie.SetValue(string(userToken))
+                                        cookie.SetPath("/")
+                                        cookie.SetHTTPOnly(true)
+
+                                        ctx.Response.Header.SetCookie(&amp;cookie)
+
+                                        // in case of first user request we also need to set request cookie here
+                                        // to be able to get it further
+                                        ctx.Request.Header.SetCookie(string(cookie.Key()), string(cookie.Value()))
+                                }</span>
+                        }
+
+                        <span class="cov8" title="1">h(ctx)</span>
+                }
+        }
+}
+
+func getUserID(ctx *fasthttp.RequestCtx, authenticator auth.Auth) (auth.UserID, error) <span class="cov8" title="1">{
+        sessionCookie := ctx.Request.Header.Cookie("session")
+        return authenticator.Decode(sessionCookie)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package auth
+
+import (
+        "github.com/google/uuid"
+)
+
+// NonceFunc is typing for functions that generate nonce(s).
+type NonceFunc func(nonceSize int) ([]byte, error)
+
+// UserID hides real user id implementation.
+type UserID = *string
+
+// NewUserID generates new random user identifier.
+func NewUserID() UserID <span class="cov0" title="0">{
+        id := uuid.New().String()
+        return &amp;id
+}</span>
+
+//go:generate mockery --name=Auth
+type Auth interface {
+        Decode(sequence []byte) (UserID, error)
+        Encode(id UserID) ([]byte, error)
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package auth
+
+import (
+        "crypto/aes"
+        "crypto/cipher"
+        "crypto/rand"
+        "encoding/base64"
+        "errors"
+        "github.com/magmel48/go-web/internal/config"
+)
+
+// CustomAuth is custom auth implementation.
+type CustomAuth struct {
+        algo      cipher.AEAD
+        NonceFunc NonceFunc
+}
+
+// NewCustomAuth creates new CustomAuth instance.
+func NewCustomAuth() (*CustomAuth, error) <span class="cov0" title="0">{
+        aesBlock, err := aes.NewCipher([]byte(config.SecretKey)[:aes.BlockSize])
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">aesGCM, err := cipher.NewGCM(aesBlock)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return &amp;CustomAuth{algo: aesGCM, NonceFunc: DefaultNonceFunc}, nil</span>
+}
+
+// Decode decodes encoded sequence (usually from user session)
+// and returns user identifier if the input sequence is valid.
+func (auth CustomAuth) Decode(sequence []byte) (UserID, error) <span class="cov8" title="1">{
+        if len(sequence) == 0 </span><span class="cov0" title="0">{
+                return nil, errors.New("wrong bytes sequence")
+        }</span>
+
+        <span class="cov8" title="1">encoded := make([]byte, base64.RawStdEncoding.DecodedLen(len(sequence)))
+
+        _, err := base64.RawStdEncoding.Decode(encoded, sequence)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">encrypted := encoded[:len(encoded)-auth.algo.NonceSize()]
+        nonce := encoded[len(encoded)-auth.algo.NonceSize():]
+
+        decrypted, err := auth.algo.Open(nil, nonce, encrypted, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">result := string(decrypted)
+        return &amp;result, nil</span>
+}
+
+// Encode encodes user identifier and puts iv into the end of result for further decoding.
+func (auth CustomAuth) Encode(id UserID) ([]byte, error) <span class="cov8" title="1">{
+        nonce, err := auth.NonceFunc(auth.algo.NonceSize())
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">encrypted := auth.algo.Seal(nil, nonce, []byte(*id), nil)
+
+        raw := append(encrypted, nonce...)
+        serialized := make([]byte, base64.RawStdEncoding.EncodedLen(len(raw)))
+
+        base64.RawStdEncoding.Encode(serialized, raw)
+
+        return serialized, nil</span>
+}
+
+// DefaultNonceFunc is default function for nonce retrieving.
+func DefaultNonceFunc(nonceSize int) ([]byte, error) <span class="cov8" title="1">{
+        nonce := make([]byte, nonceSize)
+        _, err := rand.Read(nonce)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return nonce, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package daemons
+
+import (
+        "context"
+        "github.com/magmel48/go-web/internal/db/userlinks"
+        "log"
+        "time"
+)
+
+// DeletingRecordsDaemon deletes link records periodically.
+type DeletingRecordsDaemon struct {
+        ctx        context.Context
+        repository userlinks.Repository
+        items      chan QueryItem
+}
+
+func NewDeletingRecordsDaemon(ctx context.Context, repository userlinks.Repository) *DeletingRecordsDaemon <span class="cov0" title="0">{
+        return &amp;DeletingRecordsDaemon{
+                ctx:        ctx,
+                repository: repository,
+                items:      make(chan QueryItem, 100),
+        }
+}</span>
+
+func (daemon *DeletingRecordsDaemon) EnqueueJob(item QueryItem) <span class="cov8" title="1">{
+        daemon.items &lt;- item
+}</span>
+
+func (daemon *DeletingRecordsDaemon) Run() <span class="cov0" title="0">{
+        ticker := time.NewTicker(5 * time.Second)
+
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-daemon.ctx.Done():<span class="cov0" title="0">
+                        log.Println("stopped links deletion processing")
+
+                        close(daemon.items)
+                        return</span>
+
+                case &lt;-ticker.C:<span class="cov0" title="0">
+                        log.Println("processing new requests for links deletion")
+                        daemon.DeleteLinks()</span>
+                }
+        }
+}
+
+func (daemon *DeletingRecordsDaemon) DeleteLinks() <span class="cov8" title="1">{
+        items := make([]userlinks.DeleteQueryItem, 0)
+        for i := 0; i &lt; maxBatchSizeToProcess; i++ </span><span class="cov8" title="1">{
+                select </span>{
+                case item := &lt;-daemon.items:<span class="cov8" title="1">
+                        items = append(items, userlinks.DeleteQueryItem{
+                                UserID:   item.UserID,
+                                ShortIDs: item.ShortIDs,
+                        })</span>
+                default:<span class="cov8" title="1"></span>
+                }
+        }
+
+        <span class="cov8" title="1">if len(items) &gt; 0 </span><span class="cov8" title="1">{
+                if err := daemon.repository.DeleteLinks(daemon.ctx, items); err != nil </span><span class="cov0" title="0">{
+                        log.Println("the error occurred while link deletion", err)
+                }</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package links
+
+import (
+        "context"
+        "database/sql"
+        "log"
+        "strconv"
+)
+
+// PostgresRepository is implementation of abstract Repository.
+type PostgresRepository struct {
+        db *sql.DB
+}
+
+func NewPostgresRepository(db *sql.DB) *PostgresRepository <span class="cov0" title="0">{
+        return &amp;PostgresRepository{db: db}
+}</span>
+
+func (repository *PostgresRepository) Create(ctx context.Context, shortID string, originalURL string) (*Link, error) <span class="cov8" title="1">{
+        if shortID == "" </span><span class="cov0" title="0">{
+                linksCount, _ := repository.getNextShortID(ctx)
+                shortID = strconv.Itoa(linksCount)
+        }</span>
+
+        <span class="cov8" title="1">link := Link{}
+        if err := repository.db.QueryRowContext(
+                ctx,
+                `
+                        INSERT INTO "links" ("short_id", "original_url") VALUES ($1, $2)
+                        ON CONFLICT ("original_url") DO UPDATE SET "original_url" = "links"."original_url"
+                        RETURNING "id", "short_id"
+                `,
+                shortID,
+                originalURL).Scan(&amp;link.ID, &amp;link.ShortID); err != nil </span><span class="cov0" title="0">{
+
+                return nil, err
+        }</span>
+
+        // shortID != link.ShortID if short_id`s are not the same
+        <span class="cov8" title="1">var err error
+        if shortID != link.ShortID </span><span class="cov0" title="0">{
+                err = ErrConflict
+        }</span>
+
+        <span class="cov8" title="1">return &amp;link, err</span>
+}
+
+func (repository *PostgresRepository) CreateBatch(ctx context.Context, originalURLs []string) ([]Link, error) <span class="cov0" title="0">{
+        result := make([]Link, len(originalURLs))
+        linksCount, _ := repository.getNextShortID(ctx)
+
+        tx, err := repository.db.Begin()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                err := tx.Rollback()
+                log.Println("CreateBatch tx rollback error", err)
+        }</span>()
+
+        <span class="cov0" title="0">insertStmt, err := tx.PrepareContext(
+                ctx, `INSERT INTO "links" ("short_id", "original_url") VALUES($1, $2) RETURNING "id", "short_id"`)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">selectStmt, err := tx.PrepareContext(
+                ctx, `SELECT "id", "short_id" FROM "links" WHERE "original_url" = $1 LIMIT 1`)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">txInsertStmt := tx.StmtContext(ctx, insertStmt)
+        txSelectStmt := tx.StmtContext(ctx, selectStmt)
+
+        for i, el := range originalURLs </span><span class="cov0" title="0">{
+                link := Link{}
+                rows, err := txSelectStmt.QueryContext(ctx, el)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">if rows.Next() </span><span class="cov0" title="0">{
+                        if err = rows.Scan(&amp;link.ID, &amp;link.ShortID); err != nil </span><span class="cov0" title="0">{
+                                return nil, err
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        if err = txInsertStmt.QueryRowContext(ctx, strconv.Itoa(linksCount+i), el).Scan(&amp;link.ID, &amp;link.ShortID); err != nil </span><span class="cov0" title="0">{
+                                return nil, err
+                        }</span>
+                }
+
+                <span class="cov0" title="0">err = rows.Err()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">result[i] = link
+
+                if err = rows.Close(); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if err := tx.Commit(); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return result, nil</span>
+}
+
+func (repository *PostgresRepository) FindByShortID(ctx context.Context, shortID string) (*Link, error) <span class="cov8" title="1">{
+        rows, err := repository.db.QueryContext(
+                ctx, `SELECT "id", "short_id", "original_url", "is_deleted" FROM "links" WHERE "short_id" = $1 LIMIT 1`, shortID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                err := rows.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Println("FindByShortID close rows error", err)
+                }</span>
+        }()
+
+        <span class="cov8" title="1">link := Link{}
+        if rows.Next() </span><span class="cov8" title="1">{
+                if err := rows.Scan(&amp;link.ID, &amp;link.ShortID, &amp;link.OriginalURL, &amp;link.IsDeleted); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+
+        <span class="cov8" title="1">err = rows.Err()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if link.ID != 0 </span><span class="cov8" title="1">{
+                return &amp;link, nil
+        }</span>
+
+        <span class="cov0" title="0">return nil, nil</span>
+}
+
+func (repository *PostgresRepository) getNextShortID(ctx context.Context) (int, error) <span class="cov0" title="0">{
+        count := 0
+
+        rows, err := repository.db.QueryContext(ctx, `SELECT COUNT(*) FROM "links"`)
+        if err != nil </span><span class="cov0" title="0">{
+                return 1, err
+        }</span>
+
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                err := rows.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Println("getNextShortID close rows error", err)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">for rows.Next() </span><span class="cov0" title="0">{
+                if err := rows.Scan(&amp;count); err != nil </span><span class="cov0" title="0">{
+                        return 1, err
+                }</span>
+
+                <span class="cov0" title="0">count = count + 1</span>
+        }
+
+        <span class="cov0" title="0">err = rows.Err()
+        if err != nil </span><span class="cov0" title="0">{
+                return 1, err
+        }</span>
+
+        <span class="cov0" title="0">return count, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package userlinks
+
+import (
+        "context"
+        "database/sql"
+        "fmt"
+        "github.com/magmel48/go-web/internal/auth"
+        "github.com/magmel48/go-web/internal/db/links"
+        "strings"
+)
+
+// PostgresRepository is implementation of abstract Repository.
+type PostgresRepository struct {
+        db *sql.DB
+}
+
+func NewPostgresRepository(db *sql.DB) *PostgresRepository <span class="cov0" title="0">{
+        return &amp;PostgresRepository{db: db}
+}</span>
+
+func (repository *PostgresRepository) Create(ctx context.Context, userID auth.UserID, linkID int) error <span class="cov8" title="1">{
+        _, err := repository.db.ExecContext(
+                ctx, `INSERT INTO "user_links" ("user_id", "link_id") VALUES ($1, $2)`, *userID, linkID)
+
+        return err
+}</span>
+
+func (repository *PostgresRepository) List(ctx context.Context, userID auth.UserID) ([]UserLink, error) <span class="cov8" title="1">{
+        rows, err := repository.db.QueryContext(
+                ctx,
+                `SELECT l."short_id", l."original_url" FROM "user_links" AS ul JOIN "links" as l ON ul."link_id" = l."id" WHERE ul."user_id" = $1`,
+                *userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">result := make([]UserLink, 0)
+
+        for rows.Next() </span><span class="cov8" title="1">{
+                link := links.Link{}
+                err := rows.Scan(&amp;link.ShortID, &amp;link.OriginalURL)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">result = append(result, UserLink{UserID: userID, Link: link})</span>
+        }
+
+        <span class="cov8" title="1">err = rows.Err()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+func (repository *PostgresRepository) FindByLinkID(ctx context.Context, userID auth.UserID, linkID int) (*UserLink, error) <span class="cov8" title="1">{
+        rows, err := repository.db.QueryContext(
+                ctx,
+                `SELECT "id", "user_id", "link_id" FROM "user_links" WHERE "user_id" = $1 AND "link_id" = $2 LIMIT 1`,
+                *userID,
+                linkID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer rows.Close()
+
+        userLink := UserLink{}
+        if rows.Next() </span><span class="cov8" title="1">{
+                err := rows.Scan(&amp;userLink.ID, &amp;userLink.UserID, &amp;userLink.LinkID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+        }
+
+        <span class="cov8" title="1">err = rows.Err()
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if userLink.ID != 0 </span><span class="cov8" title="1">{
+                return &amp;userLink, nil
+        }</span>
+
+        <span class="cov0" title="0">return nil, nil</span>
+}
+
+func (repository *PostgresRepository) DeleteLinks(ctx context.Context, deleteQueryItems []DeleteQueryItem) error <span class="cov0" title="0">{
+        query := `
+                UPDATE "links" AS l
+                SET "is_deleted" = true
+                FROM "user_links" AS ul WHERE
+        `
+
+        clauses := make([]string, len(deleteQueryItems))
+        for i := range deleteQueryItems </span><span class="cov0" title="0">{
+                clause := fmt.Sprintf(`l."short_id" = ANY ($%d) AND l."id" = ul."link_id" AND ul."user_id" = $%d`, 2*i+1, 2*i+2)
+                clauses[i] = clause
+        }</span>
+
+        <span class="cov0" title="0">query += strings.Join(clauses, " OR ")
+
+        args := make([]interface{}, 0)
+        for _, el := range deleteQueryItems </span><span class="cov0" title="0">{
+                args = append(args, el.ShortIDs, *el.UserID)
+        }</span>
+
+        <span class="cov0" title="0">_, err := repository.db.ExecContext(ctx, query, args...)
+
+        return err</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package shortener
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "github.com/magmel48/go-web/internal/auth"
+        "github.com/magmel48/go-web/internal/daemons"
+        "github.com/magmel48/go-web/internal/db"
+        "github.com/magmel48/go-web/internal/db/links"
+        "github.com/magmel48/go-web/internal/db/userlinks"
+        "net/url"
+)
+
+var ErrDeleted = errors.New("the link is deleted")
+
+// Shortener makes links shorter.
+type Shortener struct {
+        ctx                 context.Context
+        prefix              string
+        database            db.DB
+        linksRepository     links.Repository
+        userLinksRepository userlinks.Repository
+        daemon              daemons.Daemon
+}
+
+type UrlsMap struct {
+        ShortURL    string `json:"short_url"`
+        OriginalURL string `json:"original_url"`
+}
+
+// NewShortener creates new shortener.
+func NewShortener(ctx context.Context, prefix string, database db.DB) Shortener <span class="cov0" title="0">{
+        userLinksRepository := userlinks.NewPostgresRepository(database.Instance())
+
+        shortener := Shortener{
+                prefix:              prefix,
+                database:            database,
+                linksRepository:     links.NewPostgresRepository(database.Instance()),
+                userLinksRepository: userLinksRepository,
+                daemon:              daemons.NewDeletingRecordsDaemon(ctx, userLinksRepository),
+        }
+
+        // starting deleting requests processing
+        go shortener.daemon.Run()
+
+        return shortener
+}</span>
+
+func (s Shortener) IsStorageAvailable(ctx context.Context) bool <span class="cov0" title="0">{
+        return s.database.CheckConnection(ctx)
+}</span>
+
+func (s Shortener) MakeShorterBatch(ctx context.Context, originalURLs []string) ([]string, error) <span class="cov0" title="0">{
+        linkRecords, err := s.linksRepository.CreateBatch(ctx, originalURLs)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">result := make([]string, len(originalURLs))
+        for i, link := range linkRecords </span><span class="cov0" title="0">{
+                result[i] = fmt.Sprintf("%s/%s", s.prefix, link.ShortID)
+        }</span>
+
+        <span class="cov0" title="0">return result, nil</span>
+}
+
+// MakeShorter makes a link shorter.
+func (s Shortener) MakeShorter(ctx context.Context, originalURL string, userID auth.UserID) (string, error) <span class="cov8" title="1">{
+        _, err := url.ParseRequestURI(originalURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", errors.New("cannot parse url")
+        }</span>
+
+        <span class="cov8" title="1">link, err := s.linksRepository.Create(ctx, "", originalURL)
+        if err != nil </span><span class="cov0" title="0">{
+                if !errors.Is(err, links.ErrConflict) </span><span class="cov0" title="0">{
+                        return "", err
+                }</span>
+        }
+
+        // store the link for the userID if needed
+        <span class="cov8" title="1">if userID != nil </span><span class="cov8" title="1">{
+                userLink, _ := s.userLinksRepository.FindByLinkID(ctx, userID, link.ID)
+                if userLink == nil </span><span class="cov0" title="0">{
+                        if err := s.userLinksRepository.Create(ctx, userID, link.ID); err != nil </span><span class="cov0" title="0">{
+                                return "", err
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return fmt.Sprintf("%s/%s", s.prefix, link.ShortID), err</span>
+}
+
+// RestoreLong restores short link to initial state if an info was stored before.
+func (s Shortener) RestoreLong(ctx context.Context, shortID string) (string, error) <span class="cov8" title="1">{
+        link, err := s.linksRepository.FindByShortID(ctx, shortID)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">if link == nil </span><span class="cov8" title="1">{
+                return "", errors.New("not found")
+        }</span>
+
+        <span class="cov8" title="1">if link.IsDeleted </span><span class="cov0" title="0">{
+                return link.OriginalURL, ErrDeleted
+        }</span>
+
+        <span class="cov8" title="1">return link.OriginalURL, nil</span>
+}
+
+// GetUserLinks returns all links belongs to specified userID.
+func (s Shortener) GetUserLinks(ctx context.Context, userID auth.UserID) ([]UrlsMap, error) <span class="cov0" title="0">{
+        if userID == nil </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+
+        <span class="cov0" title="0">userLinksList, err := s.userLinksRepository.List(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">result := make([]UrlsMap, len(userLinksList))
+        for i, userLink := range userLinksList </span><span class="cov0" title="0">{
+                result[i] = UrlsMap{
+                        ShortURL:    fmt.Sprintf("%s/%s", s.prefix, userLink.Link.ShortID),
+                        OriginalURL: userLink.Link.OriginalURL,
+                }
+        }</span>
+
+        <span class="cov0" title="0">return result, nil</span>
+}
+
+func (s Shortener) DeleteURLs(userID auth.UserID, shortIDs []string) <span class="cov8" title="1">{
+        s.daemon.EnqueueJob(daemons.QueryItem{UserID: userID, ShortIDs: shortIDs})
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

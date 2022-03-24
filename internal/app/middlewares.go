@@ -58,6 +58,7 @@ func cookiesHandler(authenticator auth.Auth) func(h fasthttp.RequestHandler) fas
 	}
 }
 
+// getUserID returns user identifier from request context, mostly works like a helper.
 func getUserID(ctx *fasthttp.RequestCtx, authenticator auth.Auth) (auth.UserID, error) {
 	sessionCookie := ctx.Request.Header.Cookie("session")
 	return authenticator.Decode(sessionCookie)
